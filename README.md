@@ -1,6 +1,6 @@
 # SWD392 Express.js Project
 
-Dự án Express.js cơ bản với cấu trúc MVC pattern.
+Dự án Express.js cơ bản với cấu trúc components based achitechtured
 
 ## 📋 Yêu cầu
 
@@ -31,47 +31,86 @@ Server sẽ chạy tại `http://localhost:3000`
 ## 📁 Cấu trúc thư mục
 
 ```
-SWD392/
-├── src/
-│   ├── controllers/     # Controllers xử lý logic
-│   ├── routes/          # Routes định nghĩa endpoints
-│   └── index.js         # Entry point
-├── .env                 # Biến môi trường
-├── .gitignore          
-├── package.json
-└── README.md
+/smart-agriculture-system
+|
+├── /components                  # Các khối nghiệp vụ chính của hệ thống
+|   |
+|   ├── /data-ingestion          # Component nhận và xử lý dữ liệu cảm biến
+|   |   ├── /application         # Logic nghiệp vụ (Use Cases)
+|   |   |   └── DataCollectorService.js   # Xử lý dữ liệu nhận từ MQTT, parse, lưu DB, phát event
+|   |   ├── /domain              # (Có thể không cần, dữ liệu đi qua trực tiếp)
+|   |   ├── /infrastructure      # Kết nối bên ngoài
+|   |   |   ├── MqttHandler.js             # Lắng nghe MQTT Broker, subscribe topic
+|   |   |   └── SensorDataRepository.js   # Lưu dữ liệu vào time-series DB
+|   |   └── /presentation        # (Thường không có, vì background service)
+|   |
+|   ├── /device-control          # Component điều khiển thiết bị (UC03)
+|   |   ├── /application
+|   |   |   └── ActuatorService.js        # Logic bật/tắt thiết bị, validate command
+|   |   ├── /domain
+|   |   |   └── Actuator.js                 # Entity: Pump, Fan, status
+|   |   ├── /infrastructure
+|   |   |   ├── MqttPublishService.js      # Gửi lệnh qua MQTT
+|   |   |   └── ActuatorRepository.js      # Lưu trạng thái thiết bị
+|   |   └── /presentation
+|   |       └── DeviceController.js        # REST API (POST /api/control)
+|   |
+|   ├── /automation-engine       # Component xử lý logic tự động (UC04, UC05, UC09)
+|   |   ├── /application
+|   |   |   ├── AutomationService.js       # Logic chính UC04: so sánh dữ liệu vs threshold
+|   |   |   ├── ThresholdService.js        # CRUD ngưỡng (UC05)
+|   |   |   └── NotificationService.js     # Tạo và gửi alert (UC09)
+|   |   ├── /domain
+|   |   |   ├── Threshold.js               # Entity ngưỡng cảm biến
+|   |   |   └── Alert.js                   # Entity cảnh báo
+|   |   ├── /infrastructure
+|   |   |   ├── ThresholdRepository.js
+|   |   |   └── AlertingClients.js        # Email, SMS, Push Notification
+|   |   └── /presentation
+|   |       └── ThresholdController.js    # REST API (POST /api/thresholds)
+|   |
+|   ├── /user-management         # Component quản lý người dùng (UC01, UC06, UC07)
+|   |   ├── /application
+|   |   |   ├── AuthService.js           # Xử lý login (UC01), tạo JWT
+|   |   |   ├── UserService.js           # CRUD user (UC06)
+|   |   |   └── RoleService.js           # CRUD role & gán quyền (UC07)
+|   |   ├── /domain
+|   |   |   ├── User.js                  # Entity người dùng
+|   |   |   └── Role.js                  # Entity vai trò
+|   |   ├── /infrastructure
+|   |   |   ├── UserRepository.js
+|   |   |   └── RoleRepository.js
+|   |   └── /presentation
+|   |       ├── AuthController.js
+|   |       ├── UserController.js
+|   |       └── RoleController.js
+|   |
+|   └── /monitoring-logging      # Component giám sát, báo cáo (UC02, UC12, UC13)
+|       ├── /application
+|       |   ├── MonitoringService.js     # Cung cấp data dashboard UC02, UC12
+|       |   ├── IncidentService.js       # Xử lý báo cáo sự cố UC13
+|       |   └── LogService.js            # Ghi log hệ thống
+|       ├── /domain
+|       |   └── IncidentReport.js
+|       ├── /infrastructure
+|       |   ├── SensorDataRepository.js   # Có thể dùng chung từ data-ingestion
+|       |   └── IncidentRepository.js
+|       └── /presentation
+|           ├── DashboardController.js  # API cho dashboard (UC02)
+|           └── IncidentController.js   # API cho mobile-app (UC13)
+|
+├── /gateways                    # Cổng vào hệ thống
+|   ├── /api-gateway             # Route request, xác thực, phân phối sang service
+|   └── /websocket-gateway       # Cổng real-time: đẩy dữ liệu sensor / alert ra UI
+|
+└── /shared-kernel               # Thư viện dùng chung
+    ├── /config                  # Cấu hình chung (env, constants)
+    ├── /database                # Kết nối DB / ORM
+    ├── /event-bus               # Event bus (RabbitMQ / Kafka) để giao tiếp bất đồng bộ
+    └── /utils                   # Các hàm tiện ích (logger, helper)
+
 ```
 
-## 🛣️ API Endpoints
-
-### Health Check
-- `GET /` - Welcome message
-- `GET /api/health` - Health check endpoint
-
-### Users
-- `GET /api/users` - Lấy danh sách tất cả users
-- `GET /api/users/:id` - Lấy user theo ID
-- `POST /api/users` - Tạo user mới
-- `PUT /api/users/:id` - Cập nhật user
-- `DELETE /api/users/:id` - Xóa user
-
-## 📝 Ví dụ sử dụng
-
-### Tạo user mới
-```bash
-POST http://localhost:3000/api/users
-Content-Type: application/json
-
-{
-  "name": "Nguyen Van C",
-  "email": "vanc@example.com"
-}
-```
-
-### Lấy danh sách users
-```bash
-GET http://localhost:3000/api/users
-```
 
 ## 🔧 Technologies
 

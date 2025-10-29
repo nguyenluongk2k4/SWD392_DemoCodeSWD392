@@ -8,6 +8,7 @@ const logger = require('../../shared-kernel/utils/logger');
 const AuthController = require('../../components/user-management/presentation/AuthController');
 const UserController = require('../../components/user-management/presentation/UserController');
 const DeviceController = require('../../components/device-control/presentation/DeviceController');
+const DemoController = require('../../components/user-management/presentation/DemoController');
 
 class ApiGateway {
   constructor() {
@@ -53,6 +54,10 @@ class ApiGateway {
     this.app.use('/api/auth', AuthController);
     this.app.use('/api/users', UserController);
     this.app.use('/api/devices', DeviceController);
+
+    // Demo Routes - Show Architecture Flow
+    this.app.get('/api/demo/architecture-flow', DemoController.showArchitectureFlow.bind(DemoController));
+    this.app.post('/api/demo/test-flow', DemoController.testUseCaseFlow.bind(DemoController));
 
     // 404 handler
     this.app.use((req, res) => {

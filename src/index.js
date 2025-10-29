@@ -64,6 +64,12 @@ class Application {
   }
 
   async initializeDefaultData() {
+    // Skip if database is disabled
+    if (!config.database.enabled) {
+      logger.info('⚙️  Skipping default data initialization (Database disabled)');
+      return;
+    }
+
     try {
       logger.info('Initializing default data...');
       await RoleRepository.initializeDefaultRoles();
