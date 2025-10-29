@@ -1,0 +1,37 @@
+{
+  "name": "smart-agriculture-system",
+  "version": "1.0.0",
+  "description": "Smart Agriculture System - Component-based Architecture",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "express",
+    "nodejs",
+    "iot",
+    "agriculture",
+    "mqtt"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "cors": "^2.8.5",
+    "mqtt": "^5.3.0",
+    "mongoose": "^8.0.3",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "socket.io": "^4.6.0",
+    "nodemailer": "^6.9.7",
+    "winston": "^3.11.0",
+    "joi": "^17.11.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
