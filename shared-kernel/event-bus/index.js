@@ -30,11 +30,30 @@ class EventBus extends EventEmitter {
 
 // Event names constants
 const Events = {
+  // Sensor & Data
   SENSOR_DATA_RECEIVED: 'sensor.data.received',
+  
+  // Thresholds
   THRESHOLD_EXCEEDED: 'threshold.exceeded',
+  THRESHOLD_CREATED: 'threshold.created',
+  THRESHOLD_UPDATED: 'threshold.updated',
+  THRESHOLD_DELETED: 'threshold.deleted',
+  
+  // Devices
   DEVICE_CONTROLLED: 'device.controlled',
+  DEVICE_STATUS_CHANGED: 'device.status.changed',
+  
+  // Alerts
   ALERT_CREATED: 'alert.created',
+  ALERT_NOTIFIED: 'alert.notified',
+  ALERT_ACKNOWLEDGED: 'alert.acknowledged',
+  ALERT_RESOLVED: 'alert.resolved',
+  
+  // Users
   USER_LOGGED_IN: 'user.logged_in',
+  USER_CREATED: 'user.created',
+  
+  // Incidents
   INCIDENT_REPORTED: 'incident.reported',
 };
 

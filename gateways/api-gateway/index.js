@@ -9,6 +9,8 @@ const AuthController = require('../../components/user-management/presentation/Au
 const UserController = require('../../components/user-management/presentation/UserController');
 const DeviceController = require('../../components/device-control/presentation/DeviceController');
 const DemoController = require('../../components/user-management/presentation/DemoController');
+const ThresholdController = require('../../components/automation-engine/presentation/ThresholdController');
+const AlertController = require('../../components/automation-engine/presentation/AlertController');
 
 class ApiGateway {
   constructor() {
@@ -54,6 +56,8 @@ class ApiGateway {
     this.app.use('/api/auth', AuthController);
     this.app.use('/api/users', UserController);
     this.app.use('/api/devices', DeviceController);
+    this.app.use('/api/thresholds', ThresholdController);
+    this.app.use('/api/alerts', AlertController);
 
     // Demo Routes - Show Architecture Flow
     this.app.get('/api/demo/architecture-flow', DemoController.showArchitectureFlow.bind(DemoController));

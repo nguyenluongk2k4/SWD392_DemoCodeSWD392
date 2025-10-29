@@ -14,6 +14,8 @@ const RoleRepository = require('../components/user-management/infrastructure/Rol
 
 // Import Application Services (to initialize event listeners)
 const DataCollectorService = require('../components/data-ingestion/application/DataCollectorService');
+const AutomationService = require('../components/automation-engine/application/AutomationService');
+const NotificationService = require('../components/automation-engine/application/NotificationService');
 
 class Application {
   constructor() {
