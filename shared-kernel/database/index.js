@@ -10,6 +10,12 @@ class Database {
 
   async connect() {
     try {
+      // Skip if database is disabled
+      if (!config.database.enabled) {
+        logger.info('📊 Database is disabled - Running in demo mode');
+        return null;
+      }
+
       if (this.connection) {
         logger.info('Database already connected');
         return this.connection;
@@ -31,7 +37,8 @@ class Database {
       return this.connection;
     } catch (error) {
       logger.error('❌ MongoDB connection failed:', error.message);
-      throw error;
+      logger.warn('⚠️  Running without database connection');
+      return null;
     }
   }
 

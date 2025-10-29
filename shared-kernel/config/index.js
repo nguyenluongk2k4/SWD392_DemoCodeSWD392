@@ -8,6 +8,7 @@ const config = {
   },
   
   database: {
+    enabled: process.env.ENABLE_DATABASE === 'true' || false,
     uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/smart_agriculture',
     name: process.env.DB_NAME || 'smart_agriculture',
     options: {
@@ -21,6 +22,7 @@ const config = {
   },
   
   mqtt: {
+    enabled: process.env.ENABLE_MQTT === 'true' || false,
     brokerUrl: process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883',
     clientId: process.env.MQTT_CLIENT_ID || 'smart_agriculture_server',
     username: process.env.MQTT_USERNAME || '',

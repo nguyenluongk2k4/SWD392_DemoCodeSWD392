@@ -12,6 +12,12 @@ class MqttHandler {
 
   connect() {
     try {
+      // Skip MQTT if disabled
+      if (!config.mqtt.enabled) {
+        logger.info('📡 MQTT is disabled - Running in demo mode');
+        return;
+      }
+
       const options = {
         clientId: config.mqtt.clientId,
         clean: true,
