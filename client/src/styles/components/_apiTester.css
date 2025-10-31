@@ -1,0 +1,101 @@
+/* ===========================================
+   ApiTester Component Styles
+   =========================================== */
+
+.api-tests {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-2xl);
+}
+
+.api-test-item {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-lg);
+  background: var(--gray-50);
+  transition: var(--transition-normal);
+}
+
+.api-test-item:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.api-test-item h4 {
+  color: var(--primary-color);
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-base);
+}
+
+.api-test-item p {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.api-response {
+  background: var(--gray-50);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-xl);
+}
+
+.api-response h4 {
+  margin-bottom: var(--spacing-md);
+  color: var(--primary-color);
+  font-size: var(--font-size-lg);
+}
+
+.api-response pre {
+  background: var(--gray-900);
+  color: var(--gray-100);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  overflow-x: auto;
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  max-height: 300px;
+  overflow-y: auto;
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  line-height: var(--line-height-relaxed);
+}
+
+/* Syntax highlighting for JSON */
+.api-response pre .json-key {
+  color: var(--info-color);
+}
+
+.api-response pre .json-string {
+  color: var(--success-color);
+}
+
+.api-response pre .json-number {
+  color: var(--warning-color);
+}
+
+.api-response pre .json-boolean {
+  color: var(--danger-color);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .api-tests {
+    grid-template-columns: 1fr;
+  }
+
+  .api-test-item {
+    padding: var(--spacing-md);
+  }
+
+  .api-response {
+    padding: var(--spacing-lg);
+  }
+
+  .api-response pre {
+    font-size: 11px;
+    padding: var(--spacing-md);
+  }
+}

@@ -47,6 +47,18 @@ class SensorDataRepository {
     }
   }
 
+  async getRecentData(limit = 10) {
+    try {
+      return await SensorData.find({})
+        .sort({ timestamp: -1 })
+        .limit(limit)
+        .populate('sensorId', 'sensorType value timestamp');
+    } catch (error) {
+      logger.error('Error getting recent sensor data:', error);
+      throw error;
+    }
+  }
+
   async getAverageByTimeRange(sensorId, startTime, endTime) {
     try {
       const result = await SensorData.aggregate([

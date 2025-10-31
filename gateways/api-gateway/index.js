@@ -62,6 +62,7 @@ class ApiGateway {
     // Demo Routes - Show Architecture Flow
     this.app.get('/api/demo/architecture-flow', DemoController.showArchitectureFlow.bind(DemoController));
     this.app.post('/api/demo/test-flow', DemoController.testUseCaseFlow.bind(DemoController));
+    this.app.get('/api/demo/sensor-data', DemoController.getSensorData.bind(DemoController));
 
     // 404 handler
     this.app.use((req, res) => {

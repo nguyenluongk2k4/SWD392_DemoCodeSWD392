@@ -2,7 +2,8 @@
 // Endpoint để demo luồng chạy qua các tầng của kiến trúc
 
 const logger = require('../../../shared-kernel/utils/logger');
-const { successResponse } = require('../../../shared-kernel/utils/response');
+const ResponseHandler = require('../../../shared-kernel/utils/response');
+const DataCollectorService = require('../../../components/data-ingestion/application/DataCollectorService');
 
 class DemoController {
   
@@ -333,6 +334,45 @@ class DemoController {
       return res.status(500).json({
         success: false,
         message: 'Internal server error',
+        error: error.message
+      });
+    }
+  }
+
+  /**
+   * Xem sensor data real-time (để kiểm tra subscription)
+   * GET /api/demo/sensor-data
+   */
+  async getSensorData(req, res) {
+    try {
+      const { sensorId, limit = 10 } = req.query;
+
+      let data;
+      if (sensorId) {
+        // Lấy data của sensor cụ thể
+        data = await DataCollectorService.getLatestData(sensorId);
+        if (data) {
+          data = [data]; // Wrap in array for consistency
+        } else {
+          data = [];
+        }
+      } else {
+        // Lấy tất cả sensor data gần đây
+        data = await DataCollectorService.getRecentData(parseInt(limit));
+      }
+
+      return ResponseHandler.success(res, {
+        sensorData: data,
+        total: data.length,
+        mqttConnected: require('../../../components/data-ingestion/infrastructure/MqttHandler').isConnected,
+        lastUpdated: data.length > 0 ? data[0]?.timestamp : null
+      }, 'Sensor data retrieved successfully');
+
+    } catch (error) {
+      logger.error('Error getting sensor data:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to get sensor data',
         error: error.message
       });
     }

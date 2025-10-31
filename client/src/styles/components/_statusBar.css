@@ -1,0 +1,54 @@
+/* ===========================================
+   StatusBar Component Styles
+   =========================================== */
+
+.status-bar {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-3xl);
+  padding: var(--spacing-lg);
+  background: var(--surface-color);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow);
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.status-label {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+}
+
+.status-value {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--border-radius-full);
+  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-sm);
+}
+
+.status-online {
+  background-color: var(--success-color);
+  color: var(--white);
+}
+
+.status-offline {
+  background-color: var(--danger-color);
+  color: var(--white);
+}
+
+.status-checking {
+  background-color: var(--warning-color);
+  color: var(--white);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .status-bar {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+}

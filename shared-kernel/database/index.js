@@ -36,7 +36,11 @@ class Database {
 
       return this.connection;
     } catch (error) {
-      logger.error('❌ MongoDB connection failed:', error.message);
+      logger.error('❌ MongoDB connection failed:', {
+        message: error?.message,
+        name: error?.name,
+        stack: error?.stack,
+      });
       logger.warn('⚠️  Running without database connection');
       return null;
     }

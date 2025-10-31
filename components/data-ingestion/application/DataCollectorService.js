@@ -44,12 +44,14 @@ class DataCollectorService {
         return null;
       }
 
+      const location = data.location || (data.farmZone ? { zone: data.farmZone } : {});
+
       return {
         sensorId: data.sensorId,
         sensorType: data.sensorType,
         value: parseFloat(data.value),
         unit: data.unit || this.getDefaultUnit(data.sensorType),
-        location: data.location || {},
+        location,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
         quality: this.determineQuality(data.sensorType, data.value),
       };
@@ -92,11 +94,11 @@ class DataCollectorService {
     return 'good';
   }
 
-  async getRecentData(sensorId, limit = 100) {
+  async getRecentDataBySensorId(sensorId, limit = 100) {
     try {
       return await SensorDataRepository.findBySensorId(sensorId, limit);
     } catch (error) {
-      logger.error('Error getting recent data:', error);
+      logger.error('Error getting recent data by sensor ID:', error);
       throw error;
     }
   }
@@ -115,6 +117,15 @@ class DataCollectorService {
       return await SensorDataRepository.getLatestBySensorId(sensorId);
     } catch (error) {
       logger.error('Error getting latest data:', error);
+      throw error;
+    }
+  }
+
+  async getRecentData(limit = 10) {
+    try {
+      return await SensorDataRepository.getRecentData(limit);
+    } catch (error) {
+      logger.error('Error getting recent data:', error);
       throw error;
     }
   }

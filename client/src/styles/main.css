@@ -1,0 +1,25 @@
+/* ===========================================
+   Main Stylesheet - Smart Agriculture Client
+   ===========================================
+   Import order is important for CSS cascade:
+   1. Variables (must be first)
+   2. Base styles (reset, typography, globals)
+   3. Utilities (helper classes)
+   4. Components (component-specific styles)
+   =========================================== */
+
+/* CSS Variables - Foundation for all styling */
+@import url('./_variables.css');
+
+/* Base Styles - Reset and global defaults */
+@import url('./_base.css');
+
+/* Utility Classes - Helper classes for rapid development */
+@import url('./_utilities.css');
+
+/* Component Styles - Scoped component styling */
+@import url('./components/_statusBar.css');
+@import url('./components/_sensorData.css');
+@import url('./components/_publishForm.css');
+@import url('./components/_apiTester.css');
+@import url('./components/_logs.css');

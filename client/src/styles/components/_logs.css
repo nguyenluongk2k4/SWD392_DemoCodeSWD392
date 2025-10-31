@@ -1,0 +1,95 @@
+/* ===========================================
+   Logs Component Styles
+   =========================================== */
+
+.logs-container {
+  background: var(--gray-900);
+  color: var(--gray-100);
+  padding: var(--spacing-lg);
+  border-radius: var(--border-radius);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-xs);
+  max-height: 200px;
+  overflow-y: auto;
+  line-height: var(--line-height-relaxed);
+}
+
+.log-entry {
+  margin-bottom: var(--spacing-xs);
+  padding: var(--spacing-xs) 0;
+  border-bottom: 1px solid var(--gray-700);
+  animation: fadeIn 0.2s ease-out;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-entry.success {
+  color: var(--success-color);
+}
+
+.log-entry.error {
+  color: var(--danger-color);
+}
+
+.log-entry.warning {
+  color: var(--warning-color);
+}
+
+.log-entry.info {
+  color: var(--gray-100);
+}
+
+/* Timestamps */
+.log-entry strong:first-child {
+  color: var(--gray-400);
+  font-weight: var(--font-weight-normal);
+}
+
+/* Scrollbar for logs */
+.logs-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.logs-container::-webkit-scrollbar-track {
+  background: var(--gray-800);
+  border-radius: var(--border-radius-full);
+}
+
+.logs-container::-webkit-scrollbar-thumb {
+  background: var(--gray-600);
+  border-radius: var(--border-radius-full);
+}
+
+.logs-container::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-500);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .logs-container {
+    font-size: 11px;
+    padding: var(--spacing-md);
+    max-height: 150px;
+  }
+
+  .log-entry {
+    margin-bottom: 2px;
+    padding: 2px 0;
+  }
+}

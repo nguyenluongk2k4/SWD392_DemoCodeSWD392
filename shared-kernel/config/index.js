@@ -28,7 +28,7 @@ const config = {
     username: process.env.MQTT_USERNAME || '',
     password: process.env.MQTT_PASSWORD || '',
     topics: {
-      sensorData: process.env.MQTT_TOPIC_SENSOR_DATA || 'sensors/+/data',
+  sensorData: process.env.MQTT_TOPIC_SENSOR_DATA || 'sensors/#',
       deviceControl: process.env.MQTT_TOPIC_DEVICE_CONTROL || 'devices/+/control',
       deviceStatus: process.env.MQTT_TOPIC_DEVICE_STATUS || 'devices/+/status',
     }
