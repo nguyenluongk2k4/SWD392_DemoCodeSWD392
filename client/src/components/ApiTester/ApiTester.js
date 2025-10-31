@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import '../styles/components/_apiTester.css';
+import '../../styles/components/_apiTester.css';
 
 const ApiTester = ({ onLog }) => {
   const [apiResponse, setApiResponse] = useState('Click a test button to see response...');

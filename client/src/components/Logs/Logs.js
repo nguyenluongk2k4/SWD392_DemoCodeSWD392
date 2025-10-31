@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import '../styles/components/_logs.css';
+import '../../styles/components/_logs.css';
 
 const Logs = () => {
   const [logs, setLogs] = useState([]);

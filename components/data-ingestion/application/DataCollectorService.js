@@ -44,16 +44,20 @@ class DataCollectorService {
         return null;
       }
 
+      const normalizedSensorType = typeof data.sensorType === 'string'
+        ? data.sensorType.trim().toLowerCase().replace(/-/g, '_')
+        : data.sensorType;
+
       const location = data.location || (data.farmZone ? { zone: data.farmZone } : {});
 
       return {
         sensorId: data.sensorId,
-        sensorType: data.sensorType,
+        sensorType: normalizedSensorType,
         value: parseFloat(data.value),
-        unit: data.unit || this.getDefaultUnit(data.sensorType),
+        unit: data.unit || this.getDefaultUnit(normalizedSensorType),
         location,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-        quality: this.determineQuality(data.sensorType, data.value),
+        quality: this.determineQuality(normalizedSensorType, data.value),
       };
     } catch (error) {
       logger.error('Error parsing sensor data:', error);

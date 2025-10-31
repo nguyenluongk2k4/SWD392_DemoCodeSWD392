@@ -1,5 +1,5 @@
 import React from 'react';
-import '../styles/components/_statusBar.css';
+import '../../styles/components/_statusBar.css';
 
 const StatusBar = ({ serverStatus, mqttStatus, lastUpdate }) => {
   const getStatusClass = (status) => {

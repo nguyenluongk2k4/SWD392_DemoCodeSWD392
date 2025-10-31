@@ -74,7 +74,7 @@ URL: https://console.hivemq.cloud/
 ```json
 {
   "sensorId": "moisture-sensor-01",
-  "sensorType": "soil-moisture",
+  "sensorType": "soil_moisture",
   "value": 45.2,
   "farmZone": "zone-1",
   "timestamp": "2025-10-31T10:30:00Z"
@@ -232,7 +232,7 @@ Sau khi publish thành công từ HiveMQ:
 - **QoS**: Sử dụng QoS 1 để đảm bảo delivery
 - **Timestamp**: Nên dùng ISO 8601 format
 - **Farm Zone**: Hỗ trợ multiple zones (zone-1, zone-2, etc.)
-- **Sensor Types**: temperature, soil-moisture, light, humidity, ph, etc.
+- **Sensor Types**: temperature, soil_moisture, light, humidity, ph, etc.
 
 ---
 

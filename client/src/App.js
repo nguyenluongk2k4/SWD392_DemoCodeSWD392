@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
-import StatusBar from './components/StatusBar';
-import SensorData from './components/SensorData';
-import PublishForm from './components/PublishForm';
-import ApiTester from './components/ApiTester';
-import Logs from './components/Logs';
+import StatusBar from './components/StatusBar/StatusBar';
+import SensorData from './components/SensorData/SensorData';
+import ApiTester from './components/ApiTester/ApiTester';
+import Logs from './components/Logs/Logs';
 
 function App() {
   const [serverStatus, setServerStatus] = useState('checking');
@@ -68,7 +67,7 @@ function App() {
 
         <div className="main-content">
           <SensorData onLog={addLog} />
-          <PublishForm onLog={addLog} onDataPublished={handleDataPublished} />
+          
           <ApiTester onLog={addLog} />
         </div>
 

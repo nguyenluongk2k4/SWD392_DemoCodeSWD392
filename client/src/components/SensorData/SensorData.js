@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import '../styles/components/_sensorData.css';
+import '../../styles/components/_sensorData.css';
 
 const SensorData = ({ onLog }) => {
   const [sensorData, setSensorData] = useState([]);
