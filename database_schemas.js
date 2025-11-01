@@ -423,16 +423,23 @@ const actuatorSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  address: {
+    type: String,
+    required: true,
+    match: [/^[0-9.:a-zA-Z-]+$/, 'Invalid gRPC address format'],
+    default: '0.0.0.0:50051',
+    comment: 'gRPC server address (host:port) for this actuator'
+  },
   status: {
     type: String,
     required: true,
-    enum: ['on', 'off', 'error', 'maintenance'],
+    enum: ['on', 'off', 'error', 'maintenance', 'ON', 'OFF'],
     default: 'off'
   },
   mode: {
     type: String,
     required: true,
-    enum: ['auto', 'manual', 'scheduled'],
+    enum: ['auto', 'manual', 'scheduled', 'AUTO', 'MANUAL', 'SCHEDULED'],
     default: 'manual'
   },
   location: {
@@ -452,7 +459,7 @@ const actuatorSchema = new mongoose.Schema({
     timestamp: Date,
     source: {
       type: String,
-      enum: ['manual', 'auto', 'scheduled']
+      enum: ['manual', 'auto', 'scheduled', 'grpc']
     }
   },
   maintenanceSchedule: {

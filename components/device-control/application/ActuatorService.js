@@ -89,6 +89,15 @@ class ActuatorService {
     }
   }
 
+  async getDeviceById(deviceId) {
+    try {
+      return await ActuatorRepository.findById(deviceId);
+    } catch (error) {
+      logger.error('Error getting device by ID:', error);
+      throw error;
+    }
+  }
+
   async registerDevice(deviceData) {
     try {
       const existingDevice = await ActuatorRepository.findById(deviceData.deviceId);
@@ -154,6 +163,44 @@ class ActuatorService {
       return await this.updateDevice(deviceId, { mode });
     } catch (error) {
       logger.error('Error toggling automatic mode:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update actuator status (used after gRPC control)
+   * @param {string} deviceId - Device ID
+   * @param {object} statusData - Status data to update (status, lastCommand, updatedAt)
+   * @returns {Promise<object>} Updated device
+   */
+  async updateActuatorStatus(deviceId, statusData) {
+    try {
+      const device = await ActuatorRepository.findById(deviceId);
+      if (!device) {
+        throw new Error('Device not found');
+      }
+
+      // Update device with new status
+      const updatedDevice = await ActuatorRepository.updateStatus(
+        { deviceId, actuatorId: device._id },
+        statusData.status,
+        'grpc',
+        statusData
+      );
+
+      // Publish event for status update
+      eventBus.publish(Events.ACTUATOR_STATUS_CHANGED, {
+        deviceId,
+        status: statusData.status,
+        lastCommand: statusData.lastCommand,
+        controlMethod: 'grpc',
+        timestamp: new Date()
+      });
+
+      logger.info(`Actuator ${deviceId} status updated to ${statusData.status}`);
+      return updatedDevice;
+    } catch (error) {
+      logger.error(`Error updating actuator status: ${error.message}`);
       throw error;
     }
   }

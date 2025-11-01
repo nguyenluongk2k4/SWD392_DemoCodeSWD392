@@ -146,18 +146,24 @@ const ZONE_DEFINITIONS = [
 
 const ACTUATOR_DEFINITIONS = [
   {
-    deviceId: 'pump-01',
+    deviceId: 'pump-main-zone-123',
     actuatorType: 'pump',
-    name: 'Irrigation Pump 01',
+    name: 'Pump pump-main-zone-123',
     farmId: 'farm-001',
-    zoneId: 'zone-1a'
+    zoneId: 'zone-1a',
+    address: '0.0.0.0:50051',
+    status: 'OFF',
+    mode: 'MANUAL'
   },
   {
-    deviceId: 'fan-01',
+    deviceId: 'fan-zone-A',
     actuatorType: 'fan',
     name: 'Ventilation Fan 01',
     farmId: 'farm-001',
-    zoneId: 'zone-1b'
+    zoneId: 'zone-1b',
+    address: '0.0.0.0:50051',
+    status: 'OFF',
+    mode: 'MANUAL'
   }
 ];
 
@@ -350,8 +356,9 @@ class DefaultDataSeeder {
             name: definition.name,
             farmId: farmDoc._id,
             zoneId: zoneDoc._id,
-            status: 'off',
-            mode: 'auto'
+            address: definition.address || '0.0.0.0:50051',
+            status: definition.status || 'off',
+            mode: definition.mode || 'manual'
           }
         },
         { upsert: true, setDefaultsOnInsert: true }

@@ -45,6 +45,15 @@ const config = {
   websocket: {
     port: process.env.WS_PORT || 3001,
   },
+
+  grpc: {
+    enabled: process.env.ENABLE_GRPC === 'true' || true,
+    actuatorAddress: process.env.GRPC_ACTUATOR_ADDRESS || '0.0.0.0:50051',
+    actuators: {
+      'pump-main-zone-123': process.env.GRPC_PUMP_ADDRESS || '0.0.0.0:50051',
+      'fan-zone-A': process.env.GRPC_FAN_ADDRESS || '0.0.0.0:50051',
+    }
+  },
   
   alerts: {
     enableEmail: process.env.ENABLE_EMAIL_ALERTS === 'true',

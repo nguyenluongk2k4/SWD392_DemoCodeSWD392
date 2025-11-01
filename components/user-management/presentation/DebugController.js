@@ -58,10 +58,12 @@ class DebugController {
             _id: a._id,
             deviceId: a.deviceId,
             name: a.name,
-            actuatorType: a.actuatorType?.displayName,
+            actuatorType: a.actuatorType,
             farm: a.farmId?.name,
             zone: a.zoneId?.name,
-            status: a.status
+            address: a.address,
+            status: a.status,
+            mode: a.mode
           })),
           farms: farms.map(f => ({
             _id: f._id,

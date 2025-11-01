@@ -12,6 +12,7 @@ const WebSocketGateway = require('../gateways/websocket-gateway');
 const MqttHandler = require('../components/data-ingestion/infrastructure/MqttHandler');
 const RoleRepository = require('../components/user-management/infrastructure/RoleRepository');
 const DefaultDataSeeder = require('../shared-kernel/database/defaultDataSeeder');
+const { getGrpcClient } = require('../components/device-control/infrastructure/GrpcClient');
 
 // Import Application Services (to initialize event listeners)
 const DataCollectorService = require('../components/data-ingestion/application/DataCollectorService');
@@ -36,6 +37,9 @@ class Application {
 
       // 3. Connect to MQTT Broker
       await this.connectMqtt();
+
+      // 3.5. Initialize gRPC Client
+      await this.initializeGrpc();
 
       // 4. Start HTTP Server with API Gateway
       await this.startHttpServer();
@@ -91,6 +95,22 @@ class Application {
     } catch (error) {
       logger.warn('MQTT connection failed. System will continue without MQTT:', error.message);
       // Don't throw error - system can run without MQTT for testing
+    }
+  }
+
+  async initializeGrpc() {
+    if (!config.grpc?.enabled) {
+      logger.info('⚙️  gRPC is disabled in config');
+      return;
+    }
+
+    try {
+      const grpcClient = await getGrpcClient();
+      logger.info('✓ gRPC Client initialized successfully');
+      logger.info('  Default address: ' + config.grpc.actuatorAddress);
+    } catch (error) {
+      logger.warn('⚠️ gRPC Client initialization failed:', error.message);
+      // Don't throw error - system can run without gRPC for testing
     }
   }
 
