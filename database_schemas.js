@@ -3,6 +3,273 @@
 
 const mongoose = require('mongoose');
 
+// Helper avoids OverwriteModelError during watch-mode reloads
+const getModel = (name, schema) => mongoose.models[name] || mongoose.model(name, schema);
+
+// Farm Schema (3NF: Master data for farms)
+const farmSchema = new mongoose.Schema({
+  farmId: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true,
+    match: [/^[a-zA-Z0-9_-]+$/, 'Farm ID must be alphanumeric with dashes/underscores']
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 100
+  },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  location: {
+    latitude: {
+      type: Number,
+      min: -90,
+      max: 90
+    },
+    longitude: {
+      type: Number,
+      min: -180,
+      max: 180
+    },
+    altitude: Number,
+    address: String
+  },
+  area: {
+    type: Number, // in hectares
+    min: 0
+  },
+  owner: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, {
+  timestamps: true
+});
+
+// Zone Schema (3NF: Zones within farms)
+const zoneSchema = new mongoose.Schema({
+  zoneId: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true,
+    match: [/^[a-zA-Z0-9_-]+$/, 'Zone ID must be alphanumeric with dashes/underscores']
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 100
+  },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  farmId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Farm',
+    required: true,
+    index: true
+  },
+  location: {
+    latitude: {
+      type: Number,
+      min: -90,
+      max: 90
+    },
+    longitude: {
+      type: Number,
+      min: -180,
+      max: 180
+    },
+    altitude: Number
+  },
+  area: {
+    type: Number, // in square meters
+    min: 0
+  },
+  cropType: {
+    type: String,
+    trim: true
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, {
+  timestamps: true
+});
+
+// SensorType Schema (3NF: Master data for sensor types)
+const sensorTypeSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+    enum: ['temperature', 'humidity', 'soil-moisture', 'light', 'ph', 'co2'],
+    trim: true
+  },
+  displayName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  unit: {
+    type: String,
+    required: true,
+    enum: ['°C', '%', 'lux', 'pH', 'ppm']
+  },
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  minValue: {
+    type: Number
+  },
+  maxValue: {
+    type: Number
+  },
+  precision: {
+    type: Number,
+    min: 0
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, {
+  timestamps: true
+});
+
+// Sensor Schema (3NF: Master data for sensors)
+const sensorSchema = new mongoose.Schema({
+  sensorId: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true,
+    match: [/^[a-zA-Z0-9_-]+$/, 'Sensor ID must be alphanumeric with dashes/underscores']
+  },
+  sensorType: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SensorType',
+    required: true,
+    index: true
+  },
+  farmId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Farm',
+    index: true
+  },
+  zoneId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Zone',
+    index: true
+  },
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 100
+  },
+  location: {
+    latitude: {
+      type: Number,
+      min: -90,
+      max: 90
+    },
+    longitude: {
+      type: Number,
+      min: -180,
+      max: 180
+    },
+    altitude: Number,
+    description: String
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'maintenance', 'error'],
+    default: 'active'
+  },
+  installationDate: {
+    type: Date,
+    default: Date.now
+  },
+  lastCalibration: Date,
+  metadata: {
+    manufacturer: String,
+    model: String,
+    firmwareVersion: String,
+    batteryLevel: {
+      type: Number,
+      min: 0,
+      max: 100
+    },
+    signalStrength: {
+      type: Number,
+      min: 0,
+      max: 100
+    }
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, {
+  timestamps: true
+});
+
+// ActuatorType Schema (3NF: Master data for actuator types)
+const actuatorTypeSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true,
+    enum: ['pump', 'fan', 'valve', 'light', 'heater', 'cooler'],
+    trim: true
+  },
+  displayName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  capabilities: [{
+    type: String,
+    enum: ['on/off', 'dimming', 'speed-control', 'positioning']
+  }],
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
+  powerConsumption: {
+    type: Number, // in watts
+    min: 0
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, {
+  timestamps: true
+});
+
 // User Schema
 const userSchema = new mongoose.Schema({
   username: {
@@ -84,49 +351,17 @@ const roleSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Sensor Data Schema (Time Series)
+// Sensor Data Schema (Time Series) - Now references Sensor
 const sensorDataSchema = new mongoose.Schema({
-  sensorId: {
-    type: String,
+  sensor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Sensor',
     required: true,
-    index: true,
-    match: [/^[a-zA-Z0-9_-]+$/, 'Sensor ID must be alphanumeric with dashes/underscores']
-  },
-  sensorType: {
-    type: String,
-    required: true,
-    enum: ['temperature', 'humidity', 'soil-moisture', 'light', 'ph', 'co2'],
     index: true
   },
   value: {
     type: Number,
     required: true
-  },
-  unit: {
-    type: String,
-    required: true,
-    enum: ['°C', '%', 'lux', 'pH', 'ppm']
-  },
-  farmId: {
-    type: String,
-    index: true
-  },
-  zoneId: {
-    type: String,
-    index: true
-  },
-  location: {
-    latitude: {
-      type: Number,
-      min: -90,
-      max: 90
-    },
-    longitude: {
-      type: Number,
-      min: -180,
-      max: 180
-    },
-    altitude: Number
   },
   timestamp: {
     type: Date,
@@ -148,19 +383,16 @@ const sensorDataSchema = new mongoose.Schema({
       type: Number,
       min: 0,
       max: 100
-    },
-    calibrationDate: Date
+    }
   }
 }, {
   timestamps: true
 });
 
 // Time Series configuration for MongoDB 5.0+
-sensorDataSchema.index({ sensorId: 1, timestamp: -1 });
-sensorDataSchema.index({ sensorType: 1, timestamp: -1 });
-sensorDataSchema.index({ farmId: 1, zoneId: 1, timestamp: -1 });
+sensorDataSchema.index({ sensor: 1, timestamp: -1 });
 
-// Actuator Schema
+// Actuator Schema - Now references ActuatorType, Farm, Zone
 const actuatorSchema = new mongoose.Schema({
   deviceId: {
     type: String,
@@ -168,10 +400,23 @@ const actuatorSchema = new mongoose.Schema({
     unique: true,
     match: [/^[a-zA-Z0-9_-]+$/, 'Device ID must be alphanumeric with dashes/underscores']
   },
-  deviceType: {
-    type: String,
+  actuatorType: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'ActuatorType',
     required: true,
-    enum: ['pump', 'fan', 'valve', 'light', 'heater', 'cooler']
+    index: true
+  },
+  farmId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Farm',
+    required: true,
+    index: true
+  },
+  zoneId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Zone',
+    required: true,
+    index: true
   },
   name: {
     type: String,
@@ -190,14 +435,6 @@ const actuatorSchema = new mongoose.Schema({
     enum: ['auto', 'manual', 'scheduled'],
     default: 'manual'
   },
-  farmId: {
-    type: String,
-    index: true
-  },
-  zoneId: {
-    type: String,
-    index: true
-  },
   location: {
     latitude: {
       type: Number,
@@ -210,10 +447,6 @@ const actuatorSchema = new mongoose.Schema({
       max: 180
     }
   },
-  capabilities: [{
-    type: String,
-    enum: ['on/off', 'dimming', 'speed-control', 'positioning']
-  }],
   lastCommand: {
     action: String,
     timestamp: Date,
@@ -234,7 +467,7 @@ const actuatorSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Threshold Schema
+// Threshold Schema - Now references SensorType, Farm, Zone
 const thresholdSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -244,9 +477,9 @@ const thresholdSchema = new mongoose.Schema({
     maxlength: 100
   },
   sensorType: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SensorType',
     required: true,
-    enum: ['temperature', 'humidity', 'soil-moisture', 'light', 'ph', 'co2'],
     index: true
   },
   minValue: {
@@ -258,11 +491,13 @@ const thresholdSchema = new mongoose.Schema({
     required: true
   },
   farmId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Farm',
     index: true
   },
   zoneId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Zone',
     index: true
   },
   action: {
@@ -270,6 +505,10 @@ const thresholdSchema = new mongoose.Schema({
       type: String,
       required: true,
       enum: ['device', 'alert', 'both']
+    },
+    actuator: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Actuator'
     },
     deviceId: String,
     deviceAction: {
@@ -306,6 +545,18 @@ const thresholdSchema = new mongoose.Schema({
   timestamps: true
 });
 
+thresholdSchema.index({ sensorType: 1, farmId: 1, zoneId: 1, isActive: 1 });
+
+thresholdSchema.methods.isViolated = function(value) {
+  return value < this.minValue || value > this.maxValue;
+};
+
+thresholdSchema.methods.getViolationType = function(value) {
+  if (value < this.minValue) return 'below_min';
+  if (value > this.maxValue) return 'above_max';
+  return null;
+};
+
 // Alert Schema
 const alertSchema = new mongoose.Schema({
   type: {
@@ -339,8 +590,8 @@ const alertSchema = new mongoose.Schema({
     index: true
   },
   sensorData: {
-    sensorId: String,
-    sensorType: String,
+    sensorDataId: { type: mongoose.Schema.Types.ObjectId, ref: 'SensorData' },
+    sensor: { type: mongoose.Schema.Types.ObjectId, ref: 'Sensor' },
     value: Number,
     timestamp: Date
   },
@@ -353,16 +604,20 @@ const alertSchema = new mongoose.Schema({
     }
   },
   device: {
-    deviceId: { type: mongoose.Schema.Types.ObjectId, ref: 'Actuator' },
+    actuatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Actuator' },
     deviceType: String,
     action: String
   },
   farmId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Farm',
+    required: true,
     index: true
   },
   zoneId: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Zone',
+    required: true,
     index: true
   },
   notifications: [{
@@ -388,7 +643,8 @@ const alertSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
-  resolvedAt: Date
+  resolvedAt: Date,
+  resolutionNotes: String
 }, {
   timestamps: true
 });
@@ -404,17 +660,49 @@ alertSchema.index({ createdAt: 1 }, {
   partialFilterExpression: { status: 'resolved' }
 });
 
+alertSchema.methods.acknowledge = function(userId) {
+  this.status = 'acknowledged';
+  this.acknowledgedBy = userId;
+  this.acknowledgedAt = new Date();
+  return this.save();
+};
+
+alertSchema.methods.resolve = function(userId, notes) {
+  this.status = 'resolved';
+  this.resolvedBy = userId;
+  this.resolvedAt = new Date();
+  if (notes) {
+    this.message = `${this.message}\nResolution: ${notes}`;
+  }
+  return this.save();
+};
+
+alertSchema.methods.dismiss = function() {
+  this.status = 'dismissed';
+  return this.save();
+};
+
 // Export schemas
 module.exports = {
-  User: mongoose.model('User', userSchema),
-  Role: mongoose.model('Role', roleSchema),
-  SensorData: mongoose.model('SensorData', sensorDataSchema),
-  Actuator: mongoose.model('Actuator', actuatorSchema),
-  Threshold: mongoose.model('Threshold', thresholdSchema),
-  Alert: mongoose.model('Alert', alertSchema),
+  Farm: getModel('Farm', farmSchema),
+  Zone: getModel('Zone', zoneSchema),
+  SensorType: getModel('SensorType', sensorTypeSchema),
+  Sensor: getModel('Sensor', sensorSchema),
+  ActuatorType: getModel('ActuatorType', actuatorTypeSchema),
+  User: getModel('User', userSchema),
+  Role: getModel('Role', roleSchema),
+  SensorData: getModel('SensorData', sensorDataSchema),
+  Actuator: getModel('Actuator', actuatorSchema),
+  Threshold: getModel('Threshold', thresholdSchema),
+  Alert: getModel('Alert', alertSchema),
 
   // Raw schemas for reference
   schemas: {
+    farmSchema,
+    zoneSchema,
+    sensorTypeSchema,
+    sensorSchema,
+    actuatorTypeSchema,
     userSchema,
     roleSchema,
     sensorDataSchema,

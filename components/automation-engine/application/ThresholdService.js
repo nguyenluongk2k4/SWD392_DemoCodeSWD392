@@ -1,5 +1,7 @@
 // Automation Engine - Application - Threshold Service (UC05)
+const mongoose = require('mongoose');
 const ThresholdRepository = require('../infrastructure/ThresholdRepository');
+const SensorTypeRepository = require('../infrastructure/SensorTypeRepository');
 const logger = require('../../../shared-kernel/utils/logger');
 const { eventBus, Events } = require('../../../shared-kernel/event-bus');
 
@@ -10,7 +12,13 @@ class ThresholdService {
    */
   async createThreshold(thresholdData, userId) {
     try {
-      logger.info(`Creating threshold for sensor type: ${thresholdData.sensorType}`);
+      const sensorTypeId = await this.resolveSensorTypeId(thresholdData.sensorType || thresholdData.sensorTypeId);
+
+      if (!sensorTypeId) {
+        throw new Error('Sensor type is required and must exist');
+      }
+
+      logger.info(`Creating threshold for sensor type: ${thresholdData.sensorType || thresholdData.sensorTypeId}`);
       
       // Validation
       if (thresholdData.minValue >= thresholdData.maxValue) {
@@ -19,6 +27,7 @@ class ThresholdService {
       
       const threshold = await ThresholdRepository.create({
         ...thresholdData,
+        sensorType: sensorTypeId,
         createdBy: userId
       });
       
@@ -57,7 +66,14 @@ class ThresholdService {
    */
   async getAllThresholds(filters = {}) {
     try {
-      return await ThresholdRepository.findAll(filters);
+      const resolvedFilters = { ...filters };
+
+      if (filters.sensorType) {
+        const sensorTypeId = await this.resolveSensorTypeId(filters.sensorType);
+        resolvedFilters.sensorTypeId = sensorTypeId;
+      }
+
+      return await ThresholdRepository.findAll(resolvedFilters);
     } catch (error) {
       logger.error('Error in getAllThresholds:', error);
       throw error;
@@ -69,9 +85,25 @@ class ThresholdService {
    */
   async getActiveThresholdsBySensorType(sensorType) {
     try {
-      return await ThresholdRepository.findActiveBySensorType(sensorType);
+      const sensorTypeId = await this.resolveSensorTypeId(sensorType);
+      return await this.getActiveThresholds({ sensorTypeId });
     } catch (error) {
       logger.error('Error in getActiveThresholdsBySensorType:', error);
+      throw error;
+    }
+  }
+
+  async getActiveThresholds(filters = {}) {
+    try {
+      const resolvedFilters = { ...filters };
+
+      if (filters.sensorType && !filters.sensorTypeId) {
+        resolvedFilters.sensorTypeId = await this.resolveSensorTypeId(filters.sensorType);
+      }
+
+      return await ThresholdRepository.findActive(resolvedFilters);
+    } catch (error) {
+      logger.error('Error in getActiveThresholds:', error);
       throw error;
     }
   }
@@ -180,6 +212,23 @@ class ThresholdService {
       logger.error('Error in getStatistics:', error);
       throw error;
     }
+  }
+
+  async resolveSensorTypeId(sensorTypeInput) {
+    if (!sensorTypeInput) {
+      return null;
+    }
+
+    if (mongoose.isValidObjectId(sensorTypeInput)) {
+      return sensorTypeInput;
+    }
+
+    if (typeof sensorTypeInput === 'object' && sensorTypeInput._id) {
+      return sensorTypeInput._id;
+    }
+
+    const sensorType = await SensorTypeRepository.findByName(sensorTypeInput);
+    return sensorType?._id || null;
   }
 }
 

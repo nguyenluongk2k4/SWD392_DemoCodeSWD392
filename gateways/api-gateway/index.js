@@ -9,6 +9,7 @@ const AuthController = require('../../components/user-management/presentation/Au
 const UserController = require('../../components/user-management/presentation/UserController');
 const DeviceController = require('../../components/device-control/presentation/DeviceController');
 const DemoController = require('../../components/user-management/presentation/DemoController');
+const DebugController = require('../../components/user-management/presentation/DebugController');
 const ThresholdController = require('../../components/automation-engine/presentation/ThresholdController');
 const AlertController = require('../../components/automation-engine/presentation/AlertController');
 
@@ -63,6 +64,9 @@ class ApiGateway {
     this.app.get('/api/demo/architecture-flow', DemoController.showArchitectureFlow.bind(DemoController));
     this.app.post('/api/demo/test-flow', DemoController.testUseCaseFlow.bind(DemoController));
     this.app.get('/api/demo/sensor-data', DemoController.getSensorData.bind(DemoController));
+
+    // Debug Routes - Check seeded data
+    this.app.get('/api/debug/seed-data', DebugController.getSeedData.bind(DebugController));
 
     // 404 handler
     this.app.use((req, res) => {

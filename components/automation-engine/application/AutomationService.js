@@ -1,5 +1,6 @@
 // Automation Engine - Application - Automation Service (UC04)
 // Core logic for automatic irrigation/ventilation
+const mongoose = require('mongoose');
 const ThresholdService = require('./ThresholdService');
 const ActuatorService = require('../../device-control/application/ActuatorService');
 const logger = require('../../../shared-kernel/utils/logger');
@@ -16,45 +17,58 @@ class AutomationService {
    */
   setupEventListeners() {
     // Listen to sensor data events
-    eventBus.on(Events.SENSOR_DATA_RECEIVED, async (sensorData) => {
-      await this.evaluateSensorData(sensorData);
+    eventBus.on(Events.SENSOR_DATA_PROCESSED, async (sensorEvent) => {
+      await this.evaluateSensorData(sensorEvent);
     });
     
-    logger.info('👂 AutomationService subscribed to sensor data events');
+    logger.info('👂 AutomationService subscribed to processed sensor data events');
   }
   
   /**
    * UC04: Evaluate sensor data against thresholds
    */
-  async evaluateSensorData(sensorData) {
+  async evaluateSensorData(sensorEvent) {
     try {
-      const { sensorType, value, sensorId, farmZone } = sensorData;
-      
-      logger.info(`Evaluating sensor data: ${sensorType} = ${value}`);
-      
-      // Get active thresholds for this sensor type
-      const thresholds = await ThresholdService.getActiveThresholdsBySensorType(sensorType);
+      if (!sensorEvent) {
+        return;
+      }
+
+      const {
+        sensorType,
+        sensor,
+        value,
+        zone,
+        farm,
+        sensorData
+      } = sensorEvent;
+
+      const sensorTypeName = sensorType?.name || 'unknown';
+      const sensorCode = sensor?.sensorId || sensorEvent.rawPayload?.sensorId || 'unknown';
+
+      logger.info(`Evaluating sensor data: ${sensorTypeName} = ${value}`);
+
+      // Get active thresholds for this sensor type / location
+      const thresholds = await ThresholdService.getActiveThresholds({
+        sensorTypeId: sensorType?._id,
+        farmId: farm?._id,
+        zoneId: zone?._id
+      });
       
       if (thresholds.length === 0) {
-        logger.debug(`No active thresholds for sensor type: ${sensorType}`);
+        logger.debug(`No active thresholds for sensor ${sensorCode} (${sensorTypeName})`);
         return;
       }
       
       // Check each threshold
       for (const threshold of thresholds) {
-        // Filter by farm zone if specified
-        if (threshold.farmZone !== 'default' && threshold.farmZone !== farmZone) {
-          continue;
-        }
-        
         // Check if threshold is violated
-        if (threshold.isViolated(value)) {
+        if (threshold.isViolated && threshold.isViolated(value)) {
           const violationType = threshold.getViolationType(value);
           
           logger.warn(`⚠️  Threshold violated: ${threshold.name} (${violationType})`);
           
           // Execute action
-          await this.executeThresholdAction(threshold, sensorData, violationType);
+          await this.executeThresholdAction(threshold, sensorEvent, violationType);
           
           // Emit event
           eventBus.emit(Events.THRESHOLD_EXCEEDED, {
@@ -73,22 +87,27 @@ class AutomationService {
   /**
    * UC04: Execute action when threshold is exceeded
    */
-  async executeThresholdAction(threshold, sensorData, violationType) {
+  async executeThresholdAction(threshold, sensorEvent, violationType) {
     try {
       const { action } = threshold;
-      
+      if (!action) {
+        logger.warn(`Threshold ${threshold.name} has no action defined`);
+        return;
+      }
+
       logger.info(`Executing threshold action: ${action.type}`);
+      const { sensorData } = sensorEvent;
       
       // Control device
-      if (action.type === 'control_device' || action.type === 'both') {
-        if (action.deviceId && action.deviceAction) {
-          await this.controlDevice(action.deviceId, action.deviceAction, threshold, sensorData);
+      if (action.type === 'device' || action.type === 'both') {
+        if ((action.actuator || action.deviceId) && action.deviceAction) {
+          await this.controlDevice(action.actuator, action.deviceId, action.deviceAction, threshold, sensorData);
         }
       }
       
       // Send alert
-      if (action.type === 'send_alert' || action.type === 'both') {
-        await this.createAlert(threshold, sensorData, violationType);
+      if (action.type === 'alert' || action.type === 'both') {
+        await this.createAlert(threshold, sensorEvent, violationType);
       }
       
     } catch (error) {
@@ -100,12 +119,23 @@ class AutomationService {
   /**
    * Control device based on threshold action
    */
-  async controlDevice(deviceId, deviceAction, threshold, sensorData) {
+  async controlDevice(actuatorRef, deviceIdFallback, deviceAction, threshold, sensorData) {
     try {
-      logger.info(`Auto-controlling device: ${deviceId} → ${deviceAction}`);
-      
+      const actuatorId = actuatorRef && actuatorRef._id
+        ? actuatorRef._id
+        : (mongoose.isValidObjectId(actuatorRef) ? actuatorRef : undefined);
+      const deviceId = deviceIdFallback || (actuatorRef && actuatorRef.deviceId) || undefined;
+
+      if (!deviceId && !actuatorId) {
+        logger.warn('No actuator reference provided for control action');
+        return;
+      }
+
+      logger.info(`Auto-controlling device: ${deviceId || actuatorId} → ${deviceAction}`);
+
       await ActuatorService.controlDevice({
         deviceId,
+        actuatorId,
         action: deviceAction,
         mode: 'auto',
         triggeredBy: {
@@ -115,7 +145,7 @@ class AutomationService {
         }
       });
       
-      logger.info(`✅ Device ${deviceId} controlled successfully`);
+  logger.info(`✅ Device ${deviceId || actuatorId} controlled successfully`);
       
     } catch (error) {
       logger.error('Error controlling device:', error);
@@ -126,23 +156,32 @@ class AutomationService {
   /**
    * Create alert when threshold is exceeded
    */
-  async createAlert(threshold, sensorData, violationType) {
+  async createAlert(threshold, sensorEvent, violationType) {
     try {
-      const severity = this.calculateSeverity(threshold, sensorData.value, violationType);
-      
+      const severity = this.calculateSeverity(threshold, sensorEvent.value, violationType);
+
+      const { sensor, sensorType, sensorData, farm, zone } = sensorEvent;
       const alertData = {
-        type: 'threshold_exceeded',
+        type: 'threshold',
         severity,
         title: `${threshold.name} Exceeded`,
-        message: this.generateAlertMessage(threshold, sensorData, violationType),
-        threshold: threshold._id,
-        sensorData: {
-          sensorId: sensorData.sensorId,
-          sensorType: sensorData.sensorType,
-          value: sensorData.value,
-          timestamp: sensorData.timestamp || new Date()
+        message: this.generateAlertMessage(threshold, sensorEvent, violationType),
+        threshold: {
+          thresholdId: threshold._id,
+          thresholdName: threshold.name,
+          expectedRange: {
+            min: threshold.minValue,
+            max: threshold.maxValue
+          }
         },
-        farmZone: sensorData.farmZone || threshold.farmZone
+        sensorData: {
+          sensorDataId: sensorData?._id,
+          sensor: sensor?._id,
+          value: sensorEvent.value,
+          timestamp: sensorEvent.timestamp || new Date()
+        },
+        farmId: farm?._id,
+        zoneId: zone?._id
       };
       
       // This will be handled by NotificationService
@@ -180,22 +219,23 @@ class AutomationService {
   /**
    * Generate human-readable alert message
    */
-  generateAlertMessage(threshold, sensorData, violationType) {
-    const { sensorType, value } = sensorData;
+  generateAlertMessage(threshold, sensorEvent, violationType) {
+    const { sensorType, value } = sensorEvent;
     const { minValue, maxValue } = threshold;
-    
-    let message = `${sensorType} sensor reading is ${value}`;
-    
+
+    const displayType = sensorType?.displayName || sensorType?.name || 'Sensor';
+    let message = `${displayType} reading is ${value}`;
+
     if (violationType === 'below_min') {
       message += `, which is below the minimum threshold of ${minValue}.`;
     } else {
       message += `, which exceeds the maximum threshold of ${maxValue}.`;
     }
-    
-    if (threshold.action.deviceId) {
+
+    if (threshold.action?.actuator || threshold.action?.deviceId) {
       message += ` Automatic action has been triggered.`;
     }
-    
+
     return message;
   }
   

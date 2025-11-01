@@ -1,13 +1,25 @@
 // Data Ingestion - Infrastructure - SensorData Repository
 const SensorData = require('../domain/SensorData');
+const SensorRepository = require('./SensorRepository');
 const logger = require('../../../shared-kernel/utils/logger');
+
+const SENSOR_POPULATE = [
+  {
+    path: 'sensor',
+    populate: [
+      { path: 'sensorType' },
+      { path: 'farmId' },
+      { path: 'zoneId' }
+    ]
+  }
+];
 
 class SensorDataRepository {
   async create(sensorDataObj) {
     try {
       const data = new SensorData(sensorDataObj);
       await data.save();
-      return data;
+      return await data.populate(SENSOR_POPULATE);
     } catch (error) {
       logger.error('Error creating sensor data:', error);
       throw error;
@@ -16,9 +28,15 @@ class SensorDataRepository {
 
   async findBySensorId(sensorId, limit = 100) {
     try {
-      return await SensorData.find({ sensorId })
+      const sensor = await SensorRepository.findByCode(sensorId);
+      if (!sensor) {
+        return [];
+      }
+
+      return await SensorData.find({ sensor: sensor._id })
         .sort({ timestamp: -1 })
-        .limit(limit);
+        .limit(limit)
+        .populate(SENSOR_POPULATE);
     } catch (error) {
       logger.error('Error finding sensor data:', error);
       throw error;
@@ -28,10 +46,22 @@ class SensorDataRepository {
   async findByTimeRange(startTime, endTime, filters = {}) {
     try {
       const query = {
-        timestamp: { $gte: startTime, $lte: endTime },
-        ...filters,
+        timestamp: { $gte: startTime, $lte: endTime }
       };
-      return await SensorData.find(query).sort({ timestamp: 1 });
+
+      if (filters.sensorId || filters.sensorCode) {
+        const sensor = await SensorRepository.findByCode(filters.sensorId || filters.sensorCode);
+        if (!sensor) {
+          return [];
+        }
+        query.sensor = sensor._id;
+      } else if (filters.sensor) {
+        query.sensor = filters.sensor;
+      }
+
+      return await SensorData.find(query)
+        .sort({ timestamp: 1 })
+        .populate(SENSOR_POPULATE);
     } catch (error) {
       logger.error('Error finding sensor data by time range:', error);
       throw error;
@@ -40,7 +70,14 @@ class SensorDataRepository {
 
   async getLatestBySensorId(sensorId) {
     try {
-      return await SensorData.findOne({ sensorId }).sort({ timestamp: -1 });
+      const sensor = await SensorRepository.findByCode(sensorId);
+      if (!sensor) {
+        return null;
+      }
+
+      return await SensorData.findOne({ sensor: sensor._id })
+        .sort({ timestamp: -1 })
+        .populate(SENSOR_POPULATE);
     } catch (error) {
       logger.error('Error getting latest sensor data:', error);
       throw error;
@@ -52,7 +89,7 @@ class SensorDataRepository {
       return await SensorData.find({})
         .sort({ timestamp: -1 })
         .limit(limit)
-        .populate('sensorId', 'sensorType value timestamp');
+        .populate(SENSOR_POPULATE);
     } catch (error) {
       logger.error('Error getting recent sensor data:', error);
       throw error;
@@ -61,10 +98,15 @@ class SensorDataRepository {
 
   async getAverageByTimeRange(sensorId, startTime, endTime) {
     try {
+      const sensor = await SensorRepository.findByCode(sensorId);
+      if (!sensor) {
+        return null;
+      }
+
       const result = await SensorData.aggregate([
         {
           $match: {
-            sensorId,
+            sensor: sensor._id,
             timestamp: { $gte: startTime, $lte: endTime },
           },
         },

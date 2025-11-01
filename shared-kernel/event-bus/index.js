@@ -32,6 +32,7 @@ class EventBus extends EventEmitter {
 const Events = {
   // Sensor & Data
   SENSOR_DATA_RECEIVED: 'sensor.data.received',
+  SENSOR_DATA_PROCESSED: 'sensor.data.processed',
   
   // Thresholds
   THRESHOLD_EXCEEDED: 'threshold.exceeded',

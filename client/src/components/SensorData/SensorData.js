@@ -1,6 +1,27 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import '../../styles/components/_sensorData.css';
 
+const normalizeSensorData = (entry) => {
+  if (!entry) {
+    return {};
+  }
+
+  const sensorDoc = entry.sensor || {};
+  const sensorTypeDoc = sensorDoc.sensorType || {};
+  const zoneDoc = entry.zone || sensorDoc.zoneId || {};
+
+  return {
+    id: entry._id,
+    sensorId: sensorDoc.sensorId || entry.sensorId || 'unknown-sensor',
+    sensorType: sensorTypeDoc.name || entry.sensorType || 'unknown',
+    value: entry.value,
+    unit: sensorTypeDoc.unit || entry.unit,
+    farmZone: zoneDoc.name || zoneDoc.zoneId || entry.farmZone || 'N/A',
+    timestamp: entry.timestamp,
+    quality: entry.quality || 'good'
+  };
+};
+
 const SensorData = ({ onLog }) => {
   const [sensorData, setSensorData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,15 +33,16 @@ const SensorData = ({ onLog }) => {
     try {
       setLoading(true);
       const url = filter
-        ? `${API_BASE}/api/demo/sensor-data?sensorId=${filter}`
-        : `${API_BASE}/api/demo/sensor-data`;
+        ? `${API_BASE}/api/demo/sensor-data?sensorId=${filter}&limit=10`
+        : `${API_BASE}/api/demo/sensor-data?limit=6`;
 
       const response = await fetch(url);
       const data = await response.json();
 
       if (response.ok && data.success) {
-        setSensorData(data.data.sensorData || []);
-        onLog(`Loaded ${data.data.total || 0} sensor records`, 'success');
+        const normalized = (data.data.sensorData || []).map(normalizeSensorData);
+        setSensorData(normalized);
+        onLog(`Loaded ${normalized.length || 0} sensor records`, 'success');
       } else {
         onLog('Failed to load sensor data', 'error');
       }
@@ -92,7 +114,7 @@ const SensorData = ({ onLog }) => {
                 key={`${sensor.sensorId}-${index}`}
                 sensor={sensor}
                 icon={getSensorIcon(sensor.sensorType)}
-                unit={getSensorUnit(sensor.sensorType)}
+                unit={sensor.unit || getSensorUnit(sensor.sensorType)}
               />
             ))
           )}

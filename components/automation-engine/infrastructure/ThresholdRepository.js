@@ -2,6 +2,15 @@
 const Threshold = require('../domain/Threshold');
 const logger = require('../../../shared-kernel/utils/logger');
 
+const THRESHOLD_POPULATE = [
+  { path: 'sensorType' },
+  { path: 'farmId' },
+  { path: 'zoneId' },
+  { path: 'action.actuator' },
+  { path: 'createdBy', select: 'username email' },
+  { path: 'updatedBy', select: 'username email' }
+];
+
 class ThresholdRepository {
   
   async create(thresholdData) {
@@ -9,7 +18,7 @@ class ThresholdRepository {
       const threshold = new Threshold(thresholdData);
       await threshold.save();
       logger.info(`Threshold created: ${threshold._id}`);
-      return threshold;
+      return await threshold.populate(THRESHOLD_POPULATE);
     } catch (error) {
       logger.error('Error creating threshold:', error);
       throw error;
@@ -19,8 +28,7 @@ class ThresholdRepository {
   async findById(id) {
     try {
       return await Threshold.findById(id)
-        .populate('createdBy', 'username email')
-        .populate('updatedBy', 'username email');
+        .populate(THRESHOLD_POPULATE);
     } catch (error) {
       logger.error('Error finding threshold by ID:', error);
       throw error;
@@ -31,12 +39,20 @@ class ThresholdRepository {
     try {
       const query = {};
       
+      if (filters.sensorTypeId) {
+        query.sensorType = filters.sensorTypeId;
+      }
+
       if (filters.sensorType) {
         query.sensorType = filters.sensorType;
       }
       
-      if (filters.farmZone) {
-        query.farmZone = filters.farmZone;
+      if (filters.farmId) {
+        query.farmId = filters.farmId;
+      }
+      
+      if (filters.zoneId) {
+        query.zoneId = filters.zoneId;
       }
       
       if (filters.isActive !== undefined) {
@@ -44,7 +60,7 @@ class ThresholdRepository {
       }
       
       return await Threshold.find(query)
-        .populate('createdBy', 'username email')
+        .populate(THRESHOLD_POPULATE)
         .sort({ createdAt: -1 });
     } catch (error) {
       logger.error('Error finding thresholds:', error);
@@ -52,12 +68,23 @@ class ThresholdRepository {
     }
   }
   
-  async findActiveBySensorType(sensorType) {
+  async findActive(filters = {}) {
     try {
-      return await Threshold.find({
-        sensorType,
-        isActive: true
-      });
+      const query = { isActive: true };
+
+      if (filters.sensorTypeId) {
+        query.sensorType = filters.sensorTypeId;
+      }
+
+      if (filters.farmId) {
+        query.farmId = filters.farmId;
+      }
+
+      if (filters.zoneId) {
+        query.zoneId = filters.zoneId;
+      }
+
+      return await Threshold.find(query).populate(THRESHOLD_POPULATE);
     } catch (error) {
       logger.error('Error finding active thresholds:', error);
       throw error;
@@ -70,7 +97,7 @@ class ThresholdRepository {
         id,
         { ...updateData, updatedAt: new Date() },
         { new: true, runValidators: true }
-      );
+      ).populate(THRESHOLD_POPULATE);
       
       if (!threshold) {
         throw new Error('Threshold not found');
@@ -122,7 +149,9 @@ class ThresholdRepository {
     try {
       const query = {};
       
-      if (filters.sensorType) {
+      if (filters.sensorTypeId) {
+        query.sensorType = filters.sensorTypeId;
+      } else if (filters.sensorType) {
         query.sensorType = filters.sensorType;
       }
       

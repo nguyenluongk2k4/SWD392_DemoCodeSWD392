@@ -5,39 +5,60 @@ const { eventBus, Events } = require('../../../shared-kernel/event-bus');
 const logger = require('../../../shared-kernel/utils/logger');
 
 class ActuatorService {
-  async controlDevice(deviceId, command, controlledBy = 'user') {
+  async controlDevice(target, command, controlledBy = 'user') {
     try {
       // Validate device exists
-      const device = await ActuatorRepository.findById(deviceId);
+      const operation = {
+        deviceId: typeof target === 'string' ? target : target?.deviceId,
+        actuatorId: typeof target === 'object' && target ? target.actuatorId : undefined,
+        action: typeof target === 'object' && target ? target.action || command : command,
+        requestedBy: typeof target === 'object' && target && target.mode === 'auto' ? 'system' : controlledBy,
+        triggeredBy: typeof target === 'object' && target ? target.triggeredBy : undefined,
+        mode: typeof target === 'object' && target && target.mode ? target.mode : undefined
+      };
+
+      if (!operation.deviceId && !operation.actuatorId) {
+        throw new Error('Device reference is required');
+      }
+
+      const device = operation.actuatorId
+        ? await ActuatorRepository.findByObjectId(operation.actuatorId)
+        : await ActuatorRepository.findById(operation.deviceId);
+
       if (!device) {
         throw new Error('Device not found');
       }
 
       // Validate command
-      if (!['on', 'off'].includes(command)) {
-        throw new Error('Invalid command. Use "on" or "off"');
+      if (!['on', 'off', 'toggle'].includes(operation.action)) {
+        throw new Error('Invalid command. Use "on", "off" or "toggle"');
       }
 
       // Check if device is in automatic mode
-      if (device.isAutomatic && controlledBy === 'user') {
-        logger.warn(`Device ${deviceId} is in automatic mode. Manual control may be overridden.`);
+      if (device.mode === 'auto' && operation.requestedBy === 'user') {
+        logger.warn(`Device ${device.deviceId} is in automatic mode. Manual control may be overridden.`);
       }
 
       // Send MQTT command
-      MqttPublishService.publishControlCommand(deviceId, command);
+      MqttPublishService.publishControlCommand(device.deviceId, operation.action);
 
       // Update device status in database
-      const updatedDevice = await ActuatorRepository.updateStatus(deviceId, command, controlledBy);
+      const updatedDevice = await ActuatorRepository.updateStatus(
+        { deviceId: device.deviceId, actuatorId: device._id },
+        operation.action,
+        operation.requestedBy
+      );
 
       // Publish event
       eventBus.publish(Events.DEVICE_CONTROLLED, {
-        deviceId,
-        command,
-        controlledBy,
+        deviceId: device.deviceId,
+        command: operation.action,
+        controlledBy: operation.requestedBy,
+        triggeredBy: operation.triggeredBy,
         timestamp: new Date(),
       });
 
-      logger.info(`✅ Device ${deviceId} controlled: ${command} by ${controlledBy}`);
+      logger.info(`✅ Device ${device.deviceId} controlled: ${operation.action} by ${operation.requestedBy}`);
 
       return updatedDevice;
     } catch (error) {
@@ -75,7 +96,13 @@ class ActuatorService {
         throw new Error('Device already registered');
       }
 
-      const device = await ActuatorRepository.create(deviceData);
+      const payload = { ...deviceData };
+      if (payload.isAutomatic !== undefined && !payload.mode) {
+        payload.mode = payload.isAutomatic ? 'auto' : 'manual';
+        delete payload.isAutomatic;
+      }
+
+      const device = await ActuatorRepository.create(payload);
       logger.info(`Device registered: ${device.deviceId}`);
       
       return device;
@@ -87,7 +114,13 @@ class ActuatorService {
 
   async updateDevice(deviceId, updateData) {
     try {
-      const device = await ActuatorRepository.update(deviceId, updateData);
+      const payload = { ...updateData };
+      if (payload.isAutomatic !== undefined) {
+        payload.mode = payload.isAutomatic ? 'auto' : 'manual';
+        delete payload.isAutomatic;
+      }
+
+      const device = await ActuatorRepository.update(deviceId, payload);
       if (!device) {
         throw new Error('Device not found');
       }
@@ -117,7 +150,8 @@ class ActuatorService {
 
   async toggleAutomaticMode(deviceId, isAutomatic) {
     try {
-      return await this.updateDevice(deviceId, { isAutomatic });
+      const mode = isAutomatic ? 'auto' : 'manual';
+      return await this.updateDevice(deviceId, { mode });
     } catch (error) {
       logger.error('Error toggling automatic mode:', error);
       throw error;

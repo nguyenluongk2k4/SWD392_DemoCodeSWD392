@@ -93,8 +93,10 @@ class NotificationService {
       // Get recipients from threshold action or default
       let recipients = [];
       
-      if (alert.threshold && alert.threshold.action && alert.threshold.action.recipients) {
-        recipients = alert.threshold.action.recipients;
+      const thresholdDoc = alert.threshold?.thresholdId;
+
+      if (thresholdDoc && thresholdDoc.action && thresholdDoc.action.recipients) {
+        recipients = thresholdDoc.action.recipients;
       } else {
         // Default recipients - in production, get from user preferences
         recipients = this.getDefaultRecipients(alert);

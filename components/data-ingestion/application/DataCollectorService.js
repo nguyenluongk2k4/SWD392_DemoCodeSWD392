@@ -1,5 +1,6 @@
 // Data Ingestion - Application - Data Collector Service
 const SensorDataRepository = require('../infrastructure/SensorDataRepository');
+const SensorRepository = require('../infrastructure/SensorRepository');
 const { eventBus, Events } = require('../../../shared-kernel/event-bus');
 const logger = require('../../../shared-kernel/utils/logger');
 
@@ -11,25 +12,34 @@ class DataCollectorService {
 
   async handleSensorData(eventData) {
     try {
-      const { data } = eventData;
-      
-      // Parse and validate sensor data
-      const sensorData = this.parseSensorData(data);
-      
-      if (!sensorData) {
-        logger.warn('Invalid sensor data received:', data);
+      if (!eventData || !eventData.data) {
+        logger.warn('Sensor data event missing payload');
         return;
       }
 
-      // Save to database
-      const savedData = await SensorDataRepository.create(sensorData);
-      
-      logger.info(`✅ Sensor data saved: ${savedData.sensorId} - ${savedData.value}${savedData.unit}`);
+      const normalization = await this.normalizeSensorData(eventData.data);
 
-      // Publish event for automation engine to check thresholds
-      eventBus.publish(Events.SENSOR_DATA_RECEIVED, {
+      if (!normalization) {
+        logger.warn('Invalid sensor data received:', eventData.data);
+        return;
+      }
+
+      const savedData = await SensorDataRepository.create(normalization.document);
+
+      logger.info(`✅ Sensor data saved: ${normalization.sensor.sensorId} - ${savedData.value}`);
+
+      eventBus.publish(Events.SENSOR_DATA_PROCESSED, {
         sensorData: savedData,
-        timestamp: new Date(),
+        sensor: normalization.sensor,
+        sensorType: normalization.sensorType,
+        farm: normalization.farm,
+        zone: normalization.zone,
+        value: savedData.value,
+        quality: savedData.quality,
+        timestamp: savedData.timestamp,
+        rawPayload: eventData.data,
+        sourceTopic: eventData.topic,
+        receivedAt: eventData.timestamp || new Date()
       });
 
     } catch (error) {
@@ -37,56 +47,63 @@ class DataCollectorService {
     }
   }
 
-  parseSensorData(data) {
+  async normalizeSensorData(data) {
     try {
-      // Validate required fields
-      if (!data.sensorId || !data.sensorType || data.value === undefined) {
+      if (!data.sensorId || data.value === undefined) {
         return null;
       }
 
-      const normalizedSensorType = typeof data.sensorType === 'string'
-        ? data.sensorType.trim().toLowerCase().replace(/-/g, '_')
-        : data.sensorType;
+      const sensor = await SensorRepository.findByCode(data.sensorId);
 
-      const location = data.location || (data.farmZone ? { zone: data.farmZone } : {});
+      if (!sensor) {
+        logger.warn(`Sensor master data not found for sensorId=${data.sensorId}`);
+        return null;
+      }
+
+      const sensorType = sensor.sensorType || null;
+      const farm = sensor.farmId || null;
+      const zone = sensor.zoneId || null;
+
+      const numericValue = Number(data.value);
+      if (Number.isNaN(numericValue)) {
+        return null;
+      }
+
+      const timestamp = data.timestamp ? new Date(data.timestamp) : new Date();
 
       return {
-        sensorId: data.sensorId,
-        sensorType: normalizedSensorType,
-        value: parseFloat(data.value),
-        unit: data.unit || this.getDefaultUnit(normalizedSensorType),
-        location,
-        timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
-        quality: this.determineQuality(normalizedSensorType, data.value),
+        sensor,
+        sensorType,
+        farm,
+        zone,
+        document: {
+          sensor: sensor._id,
+          value: numericValue,
+          timestamp,
+          quality: this.determineQuality(sensorType?.name, numericValue),
+          metadata: {
+            batteryLevel: data?.metadata?.batteryLevel ?? data?.batteryLevel,
+            signalStrength: data?.metadata?.signalStrength ?? data?.signalStrength
+          }
+        }
       };
     } catch (error) {
-      logger.error('Error parsing sensor data:', error);
+      logger.error('Error normalizing sensor data:', error);
       return null;
     }
   }
 
-  getDefaultUnit(sensorType) {
-    const unitMap = {
-      temperature: '°C',
-      humidity: '%',
-      soil_moisture: '%',
-      light: 'lux',
-      ph: 'pH',
-      nutrient: 'ppm',
-    };
-    return unitMap[sensorType] || '';
-  }
-
-  determineQuality(sensorType, value) {
+  determineQuality(sensorTypeName, value) {
     // Simple quality determination logic
     const thresholds = {
       temperature: { min: 15, max: 35 },
       humidity: { min: 40, max: 80 },
-      soil_moisture: { min: 30, max: 70 },
+      'soil-moisture': { min: 30, max: 70 },
       ph: { min: 6, max: 7.5 },
     };
 
-    const threshold = thresholds[sensorType];
+    const normalizedType = (sensorTypeName || '').toLowerCase();
+    const threshold = thresholds[normalizedType];
     if (!threshold) return 'good';
 
     if (value < threshold.min || value > threshold.max) {

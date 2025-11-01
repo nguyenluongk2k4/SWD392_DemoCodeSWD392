@@ -2,6 +2,14 @@
 const Alert = require('../domain/Alert');
 const logger = require('../../../shared-kernel/utils/logger');
 
+const ALERT_POPULATE = [
+  { path: 'threshold.thresholdId' },
+  { path: 'device.actuatorId' },
+  { path: 'sensorData.sensor' },
+  { path: 'acknowledgedBy', select: 'username email' },
+  { path: 'resolvedBy', select: 'username email' }
+];
+
 class AlertRepository {
   
   async create(alertData) {
@@ -9,7 +17,7 @@ class AlertRepository {
       const alert = new Alert(alertData);
       await alert.save();
       logger.info(`Alert created: ${alert._id} - ${alert.title}`);
-      return alert;
+      return await alert.populate(ALERT_POPULATE);
     } catch (error) {
       logger.error('Error creating alert:', error);
       throw error;
@@ -19,10 +27,7 @@ class AlertRepository {
   async findById(id) {
     try {
       return await Alert.findById(id)
-        .populate('threshold')
-        .populate('device')
-        .populate('acknowledgedBy', 'username email')
-        .populate('resolvedBy', 'username email');
+        .populate(ALERT_POPULATE);
     } catch (error) {
       logger.error('Error finding alert by ID:', error);
       throw error;
@@ -45,8 +50,12 @@ class AlertRepository {
         query.status = filters.status;
       }
       
-      if (filters.farmZone) {
-        query.farmZone = filters.farmZone;
+      if (filters.farmId) {
+        query.farmId = filters.farmId;
+      }
+
+      if (filters.zoneId) {
+        query.zoneId = filters.zoneId;
       }
       
       // Date range filter
@@ -60,14 +69,12 @@ class AlertRepository {
         }
       }
       
-      const page = parseInt(filters.page) || 1;
-      const limit = parseInt(filters.limit) || 20;
+      const page = parseInt(filters.page, 10) || 1;
+      const limit = parseInt(filters.limit, 10) || 20;
       const skip = (page - 1) * limit;
       
       const alerts = await Alert.find(query)
-        .populate('threshold', 'name sensorType')
-        .populate('acknowledgedBy', 'username')
-        .populate('resolvedBy', 'username')
+        .populate(ALERT_POPULATE)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit);
@@ -94,7 +101,7 @@ class AlertRepository {
       return await Alert.find({
         status: { $in: ['new', 'acknowledged'] }
       })
-        .populate('threshold', 'name sensorType')
+        .populate(ALERT_POPULATE)
         .sort({ severity: -1, createdAt: -1 })
         .limit(50);
     } catch (error) {
@@ -109,7 +116,7 @@ class AlertRepository {
         id,
         updateData,
         { new: true, runValidators: true }
-      );
+      ).populate(ALERT_POPULATE);
       
       if (!alert) {
         throw new Error('Alert not found');
@@ -143,6 +150,14 @@ class AlertRepository {
     try {
       const query = {};
       
+      if (filters.farmId) {
+        query.farmId = filters.farmId;
+      }
+
+      if (filters.zoneId) {
+        query.zoneId = filters.zoneId;
+      }
+
       if (filters.startDate || filters.endDate) {
         query.createdAt = {};
         if (filters.startDate) {

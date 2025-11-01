@@ -11,6 +11,7 @@ const WebSocketGateway = require('../gateways/websocket-gateway');
 // Import Infrastructure Services
 const MqttHandler = require('../components/data-ingestion/infrastructure/MqttHandler');
 const RoleRepository = require('../components/user-management/infrastructure/RoleRepository');
+const DefaultDataSeeder = require('../shared-kernel/database/defaultDataSeeder');
 
 // Import Application Services (to initialize event listeners)
 const DataCollectorService = require('../components/data-ingestion/application/DataCollectorService');
@@ -75,6 +76,7 @@ class Application {
     try {
       logger.info('Initializing default data...');
       await RoleRepository.initializeDefaultRoles();
+  await DefaultDataSeeder.seed();
       logger.info('Default data initialized');
     } catch (error) {
       logger.warn('⚠️ Error initializing default data. System will continue:', error.message);

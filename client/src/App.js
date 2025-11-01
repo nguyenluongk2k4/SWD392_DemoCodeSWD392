@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
+import Layout from './components/Layout/Layout';
 import StatusBar from './components/StatusBar/StatusBar';
 import SensorData from './components/SensorData/SensorData';
 import ApiTester from './components/ApiTester/ApiTester';
+import FarmManagement from './components/Management/FarmManagement';
+import ZoneManagement from './components/Management/ZoneManagement';
+import SensorManagement from './components/Management/SensorManagement';
+import ActuatorManagement from './components/Management/ActuatorManagement';
 import Logs from './components/Logs/Logs';
 
 function App() {
@@ -51,29 +56,41 @@ function App() {
     }, 2000);
   };
 
+  const [currentPage, setCurrentPage] = useState('dashboard');
+
+  const renderContent = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return <SensorData onLog={addLog} />;
+      case 'farms':
+        return <FarmManagement onLog={addLog} />;
+      case 'zones':
+        return <ZoneManagement onLog={addLog} />;
+      case 'sensors':
+        return <SensorManagement onLog={addLog} />;
+      case 'actuators':
+        return <ActuatorManagement onLog={addLog} />;
+      case 'sensor-logs':
+        return <SensorManagement onLog={addLog} />;
+      default:
+        return <SensorData onLog={addLog} />;
+    }
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <h1><i className="fas fa-seedling"></i> Smart Agriculture System</h1>
-        <p>Client Dashboard - Test API Endpoints</p>
-      </header>
+    <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
+      <StatusBar
+        serverStatus={serverStatus}
+        mqttStatus={mqttStatus}
+        lastUpdate={lastUpdate}
+      />
 
-      <main className="App-main">
-        <StatusBar
-          serverStatus={serverStatus}
-          mqttStatus={mqttStatus}
-          lastUpdate={lastUpdate}
-        />
+      <div className="page-content">
+        {renderContent()}
+      </div>
 
-        <div className="main-content">
-          <SensorData onLog={addLog} />
-          
-          <ApiTester onLog={addLog} />
-        </div>
-
-        <Logs />
-      </main>
-    </div>
+      <Logs />
+    </Layout>
   );
 }
 
