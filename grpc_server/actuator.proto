@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+// Package giúp tổ chức code và tránh xung đột tên
+package smart_agriculture.v1;
+
+// Import các kiểu dữ liệu chuẩn của Google
+import "google/protobuf/timestamp.proto";
+
+// =======================================================
+// SERVICE DEFINITION
+// Định nghĩa các RPC (Remote Procedure Call) mà server cung cấp
+// =======================================================
+
+service ActuatorManagerService {
+  // Gửi một lệnh điều khiển đến một actuator cụ thể (bật/tắt)
+  rpc ControlActuator(ControlActuatorRequest) returns (ControlActuatorResponse);
+
+  // Lấy thông tin trạng thái chi tiết của một actuator
+  rpc GetActuatorStatus(GetActuatorStatusRequest) returns (Actuator);
+
+  // Lấy danh sách các actuator theo một farm hoặc zone
+  rpc ListActuators(ListActuatorsRequest) returns (ListActuatorsResponse);
+}
+
+
+// =======================================================
+// MESSAGE DEFINITIONS
+// Định nghĩa cấu trúc dữ liệu (payload) cho các RPC
+// =======================================================
+
+// Enum định nghĩa trạng thái của Actuator, mapping từ schema
+enum ActuatorStatus {
+  STATUS_UNSPECIFIED = 0;
+  ON = 1;
+  OFF = 2;
+  ERROR = 3;
+  MAINTENANCE = 4;
+}
+
+// Enum định nghĩa chế độ hoạt động, mapping từ schema
+enum ActuatorMode {
+  MODE_UNSPECIFIED = 0;
+  AUTO = 1;
+  MANUAL = 2;
+  SCHEDULED = 3;
+}
+
+// Message chính, đại diện cho một Actuator, mapping trực tiếp từ `actuatorSchema`
+message Actuator {
+  // `deviceId` là mã định danh duy nhất (dạng string)
+  string device_id = 1;
+
+  // Tên của actuator (ví dụ: "Bơm chính khu A")
+  string name = 2;
+
+  // Loại actuator (tham chiếu đến ActuatorType, ở đây ta lấy tên, ví dụ: "pump")
+  string actuator_type_name = 3;
+
+  // ID của Farm và Zone mà nó thuộc về (dạng string, không phải ObjectId)
+  string farm_id = 4;
+  string zone_id = 5;
+
+  // Trạng thái hiện tại
+  ActuatorStatus status = 6;
+
+  // Chế độ hoạt động
+  ActuatorMode mode = 7;
+
+  // Lệnh điều khiển cuối cùng
+  LastCommand last_command = 8;
+
+  // Thời gian tạo và cập nhật
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// Message con để chứa thông tin về lệnh cuối cùng
+message LastCommand {
+  string action = 1; // "on", "off"
+  google.protobuf.Timestamp timestamp = 2;
+  string source = 3; // "manual", "auto", "scheduled"
+}
+
+// --- Messages cho RPC ControlActuator ---
+
+// Enum cho các hành động điều khiển
+enum ControlAction {
+  ACTION_UNSPECIFIED = 0;
+  TURN_ON = 1;
+  TURN_OFF = 2;
+}
+
+// Yêu cầu điều khiển
+message ControlActuatorRequest {
+  // ID của thiết bị cần điều khiển
+  string device_id = 1;
+  // Hành động muốn thực hiện
+  ControlAction action = 2;
+}
+
+// Phản hồi sau khi điều khiển, trả về trạng thái mới nhất
+message ControlActuatorResponse {
+  Actuator actuator = 1;
+}
+
+// --- Messages cho RPC GetActuatorStatus ---
+
+// Yêu cầu lấy trạng thái
+message GetActuatorStatusRequest {
+  string device_id = 1;
+}
+// Phản hồi cho GetActuatorStatus là message `Actuator` ở trên.
+
+
+// --- Messages cho RPC ListActuators ---
+
+// Yêu cầu lấy danh sách actuator
+message ListActuatorsRequest {
+  // Lọc theo farm ID (bắt buộc)
+  string farm_id = 1;
+  // Lọc theo zone ID (tùy chọn)
+  string zone_id = 2;
+  // Phân trang (tùy chọn)
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+// Phản hồi chứa danh sách actuator
+message ListActuatorsResponse {
+  repeated Actuator actuators = 1;
+  string next_page_token = 2;
+}
