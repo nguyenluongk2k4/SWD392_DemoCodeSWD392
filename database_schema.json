@@ -1,0 +1,512 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Smart Agriculture Database Schema",
+  "description": "MongoDB Collections Schema for Smart Agriculture System",
+  "definitions": {
+    "objectId": {
+      "type": "string",
+      "pattern": "^[a-fA-F0-9]{24}$",
+      "description": "MongoDB ObjectId format"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "description": "Email address format"
+    },
+    "phone": {
+      "type": "string",
+      "pattern": "^[+]?[0-9]{10,15}$",
+      "description": "Phone number format"
+    }
+  },
+  "type": "object",
+  "properties": {
+    "users": {
+      "type": "object",
+      "description": "User collection for authentication and user management",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "MongoDB ObjectId"
+        },
+        "username": {
+          "type": "string",
+          "description": "Unique username",
+          "minLength": 3,
+          "maxLength": 50
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Unique email address"
+        },
+        "password": {
+          "type": "string",
+          "description": "Hashed password using bcrypt"
+        },
+        "fullName": {
+          "type": "string",
+          "description": "Full name of the user",
+          "minLength": 2,
+          "maxLength": 100
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number (optional)",
+          "pattern": "^[+]?[0-9]{10,15}$"
+        },
+        "role": {
+          "type": "string",
+          "description": "Reference to Role ObjectId"
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Account status",
+          "default": true
+        },
+        "lastLogin": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last login timestamp"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["username", "email", "password", "fullName", "role"],
+      "additionalProperties": false
+    },
+    "roles": {
+      "type": "object",
+      "description": "Role collection for user permissions",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "MongoDB ObjectId"
+        },
+        "name": {
+          "type": "string",
+          "enum": ["admin", "farmer", "manager"],
+          "description": "Role name"
+        },
+        "description": {
+          "type": "string",
+          "description": "Role description"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "user.read", "user.write", "user.delete",
+              "device.read", "device.write", "device.control",
+              "sensor.read", "threshold.read", "threshold.write",
+              "alert.read", "alert.write", "alert.acknowledge",
+              "report.read", "system.admin"
+            ]
+          },
+          "description": "Array of permissions"
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": true
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["name", "permissions"],
+      "additionalProperties": false
+    },
+    "sensordata": {
+      "type": "object",
+      "description": "Time-series sensor data collection",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "MongoDB ObjectId"
+        },
+        "sensorId": {
+          "type": "string",
+          "description": "Unique sensor identifier",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "sensorType": {
+          "type": "string",
+          "enum": ["temperature", "humidity", "soil-moisture", "light", "ph", "co2"],
+          "description": "Type of sensor"
+        },
+        "value": {
+          "type": "number",
+          "description": "Sensor reading value"
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["°C", "%", "lux", "pH", "ppm"],
+          "description": "Unit of measurement"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Farm identifier"
+        },
+        "zoneId": {
+          "type": "string",
+          "description": "Zone within the farm"
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+            "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+            "altitude": { "type": "number" }
+          },
+          "description": "GPS coordinates"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Reading timestamp"
+        },
+        "quality": {
+          "type": "string",
+          "enum": ["good", "warning", "error"],
+          "description": "Data quality indicator"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Additional sensor metadata",
+          "properties": {
+            "batteryLevel": { "type": "number", "minimum": 0, "maximum": 100 },
+            "signalStrength": { "type": "number", "minimum": 0, "maximum": 100 },
+            "calibrationDate": { "type": "string", "format": "date" }
+          }
+        }
+      },
+      "required": ["sensorId", "sensorType", "value", "timestamp"],
+      "additionalProperties": false
+    },
+    "actuators": {
+      "type": "object",
+      "description": "Actuator devices collection",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "MongoDB ObjectId"
+        },
+        "deviceId": {
+          "type": "string",
+          "description": "Unique device identifier",
+          "pattern": "^[a-zA-Z0-9_-]+$"
+        },
+        "deviceType": {
+          "type": "string",
+          "enum": ["pump", "fan", "valve", "light", "heater", "cooler"],
+          "description": "Type of actuator"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable device name"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["on", "off", "error", "maintenance"],
+          "description": "Current device status"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["auto", "manual", "scheduled"],
+          "description": "Control mode"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Farm identifier"
+        },
+        "zoneId": {
+          "type": "string",
+          "description": "Zone within the farm"
+        },
+        "location": {
+          "type": "object",
+          "properties": {
+            "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+            "longitude": { "type": "number", "minimum": -180, "maximum": 180 }
+          },
+          "description": "GPS coordinates"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["on/off", "dimming", "speed-control", "positioning"]
+          },
+          "description": "Device capabilities"
+        },
+        "lastCommand": {
+          "type": "object",
+          "properties": {
+            "action": { "type": "string" },
+            "timestamp": { "type": "string", "format": "date-time" },
+            "source": { "type": "string", "enum": ["manual", "auto", "scheduled"] }
+          },
+          "description": "Last command executed"
+        },
+        "maintenanceSchedule": {
+          "type": "object",
+          "properties": {
+            "lastMaintenance": { "type": "string", "format": "date" },
+            "nextMaintenance": { "type": "string", "format": "date" },
+            "frequency": { "type": "string", "enum": ["daily", "weekly", "monthly", "quarterly"] }
+          },
+          "description": "Maintenance information"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["deviceId", "deviceType", "status", "mode"],
+      "additionalProperties": false
+    },
+    "thresholds": {
+      "type": "object",
+      "description": "Automation thresholds collection",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "MongoDB ObjectId"
+        },
+        "name": {
+          "type": "string",
+          "description": "Threshold name",
+          "minLength": 3,
+          "maxLength": 100
+        },
+        "sensorType": {
+          "type": "string",
+          "enum": ["temperature", "humidity", "soil-moisture", "light", "ph", "co2"],
+          "description": "Sensor type this threshold applies to"
+        },
+        "minValue": {
+          "type": "number",
+          "description": "Minimum threshold value"
+        },
+        "maxValue": {
+          "type": "number",
+          "description": "Maximum threshold value"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Farm identifier (optional filter)"
+        },
+        "zoneId": {
+          "type": "string",
+          "description": "Zone identifier (optional filter)"
+        },
+        "action": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["device", "alert", "both"],
+              "description": "Action type"
+            },
+            "deviceId": {
+              "type": "string",
+              "description": "Target device for control action"
+            },
+            "deviceAction": {
+              "type": "string",
+              "enum": ["on", "off", "toggle"],
+              "description": "Device control action"
+            },
+            "alertType": {
+              "type": "string",
+              "enum": ["email", "sms", "push", "all"],
+              "description": "Alert notification type"
+            },
+            "recipients": {
+              "type": "array",
+              "items": { "type": "string", "format": "email" },
+              "description": "Email recipients for alerts"
+            },
+            "priority": {
+              "type": "string",
+              "enum": ["low", "medium", "high", "critical"],
+              "description": "Alert priority"
+            }
+          },
+          "required": ["type"]
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Threshold active status",
+          "default": true
+        },
+        "violationCount": {
+          "type": "number",
+          "description": "Number of times threshold was violated",
+          "default": 0
+        },
+        "lastViolation": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last violation timestamp"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "User who created this threshold"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["name", "sensorType", "action"],
+      "additionalProperties": false
+    },
+    "alerts": {
+      "type": "object",
+      "description": "Alert notifications collection",
+      "properties": {
+        "_id": {
+          "type": "string",
+          "description": "MongoDB ObjectId"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["threshold", "device", "system", "maintenance"],
+          "description": "Alert type"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Alert severity"
+        },
+        "title": {
+          "type": "string",
+          "description": "Alert title",
+          "minLength": 5,
+          "maxLength": 200
+        },
+        "message": {
+          "type": "string",
+          "description": "Detailed alert message",
+          "maxLength": 1000
+        },
+        "status": {
+          "type": "string",
+          "enum": ["new", "acknowledged", "resolved", "dismissed"],
+          "description": "Alert status",
+          "default": "new"
+        },
+        "sensorData": {
+          "type": "object",
+          "properties": {
+            "sensorId": { "type": "string" },
+            "sensorType": { "type": "string" },
+            "value": { "type": "number" },
+            "timestamp": { "type": "string", "format": "date-time" }
+          },
+          "description": "Related sensor data that triggered the alert"
+        },
+        "threshold": {
+          "type": "object",
+          "properties": {
+            "thresholdId": { "type": "string" },
+            "thresholdName": { "type": "string" },
+            "expectedRange": {
+              "type": "object",
+              "properties": {
+                "min": { "type": "number" },
+                "max": { "type": "number" }
+              }
+            }
+          },
+          "description": "Related threshold information"
+        },
+        "device": {
+          "type": "object",
+          "properties": {
+            "deviceId": { "type": "string" },
+            "deviceType": { "type": "string" },
+            "action": { "type": "string" }
+          },
+          "description": "Related device information"
+        },
+        "farmId": {
+          "type": "string",
+          "description": "Farm identifier"
+        },
+        "zoneId": {
+          "type": "string",
+          "description": "Zone identifier"
+        },
+        "notifications": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "channel": {
+                "type": "string",
+                "enum": ["email", "sms", "push"]
+              },
+              "recipient": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["pending", "sent", "failed"]
+              },
+              "sentAt": { "type": "string", "format": "date-time" },
+              "error": { "type": "string" }
+            }
+          },
+          "description": "Notification delivery status"
+        },
+        "acknowledgedBy": {
+          "type": "string",
+          "description": "User who acknowledged the alert"
+        },
+        "acknowledgedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolvedBy": {
+          "type": "string",
+          "description": "User who resolved the alert"
+        },
+        "resolvedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["type", "severity", "title", "message"],
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
