@@ -66,33 +66,79 @@ const SENSOR_TYPE_DEFINITIONS = [
 ];
 
 const SENSOR_DEFINITIONS = [
+  // Farm 001 - Zone 1a (Rau xanh)
   {
     sensorId: 'temp-sensor-01',
     sensorType: 'temperature',
-    name: 'Temperature Sensor 01',
+    name: 'Temperature Sensor - Zone 1A',
     farmId: 'farm-001',
     zoneId: 'zone-1a'
   },
   {
     sensorId: 'moisture-sensor-01',
     sensorType: 'soil-moisture',
-    name: 'Soil Moisture Sensor 01',
+    name: 'Soil Moisture Sensor - Zone 1A',
     farmId: 'farm-001',
     zoneId: 'zone-1a'
   },
   {
-    sensorId: 'light-sensor-01',
-    sensorType: 'light',
-    name: 'Light Sensor 01',
+    sensorId: 'humidity-sensor-01',
+    sensorType: 'humidity',
+    name: 'Humidity Sensor - Zone 1A',
+    farmId: 'farm-001',
+    zoneId: 'zone-1a'
+  },
+  // Farm 001 - Zone 1b (Cà chua)
+  {
+    sensorId: 'temp-sensor-02',
+    sensorType: 'temperature',
+    name: 'Temperature Sensor - Zone 1B',
     farmId: 'farm-001',
     zoneId: 'zone-1b'
   },
   {
-    sensorId: 'humidity-sensor-01',
-    sensorType: 'humidity',
-    name: 'Humidity Sensor 01',
+    sensorId: 'light-sensor-01',
+    sensorType: 'light',
+    name: 'Light Sensor - Zone 1B',
     farmId: 'farm-001',
     zoneId: 'zone-1b'
+  },
+  {
+    sensorId: 'ph-sensor-01',
+    sensorType: 'ph',
+    name: 'pH Sensor - Zone 1B',
+    farmId: 'farm-001',
+    zoneId: 'zone-1b'
+  },
+  // Farm 002 - Zone 2a (Rau hữu cơ)
+  {
+    sensorId: 'temp-sensor-03',
+    sensorType: 'temperature',
+    name: 'Temperature Sensor - Zone 2A',
+    farmId: 'farm-002',
+    zoneId: 'zone-2a'
+  },
+  {
+    sensorId: 'moisture-sensor-02',
+    sensorType: 'soil-moisture',
+    name: 'Soil Moisture Sensor - Zone 2A',
+    farmId: 'farm-002',
+    zoneId: 'zone-2a'
+  },
+  // Farm 003 - Zone 3a (Hydroponic)
+  {
+    sensorId: 'ph-sensor-02',
+    sensorType: 'ph',
+    name: 'pH Sensor - Hydroponic Zone 3A',
+    farmId: 'farm-003',
+    zoneId: 'zone-3a'
+  },
+  {
+    sensorId: 'co2-sensor-01',
+    sensorType: 'co2',
+    name: 'CO₂ Sensor - Hydroponic Zone 3A',
+    farmId: 'farm-003',
+    zoneId: 'zone-3a'
   }
 ];
 
@@ -114,41 +160,147 @@ const ACTUATOR_TYPE_DEFINITIONS = [
 const FARM_DEFINITIONS = [
   {
     farmId: 'farm-001',
-    name: 'Demo Farm',
-    description: 'Default demonstration smart farm',
+    name: 'Smart Farm Hà Nội',
+    description: 'Demo smart farm with IoT sensors and automation',
     location: {
       latitude: 21.0278,
       longitude: 105.8342,
       altitude: 15,
-      address: 'Hanoi, Vietnam'
+      address: 'Thanh Trì, Hà Nội, Việt Nam'
     },
     area: 50,
+    ownerUsername: 'admin'
+  },
+  {
+    farmId: 'farm-002',
+    name: 'Organic Farm Đà Lạt',
+    description: 'Highland organic vegetable farm',
+    location: {
+      latitude: 11.9404,
+      longitude: 108.4583,
+      altitude: 1500,
+      address: 'Đà Lạt, Lâm Đồng, Việt Nam'
+    },
+    area: 100,
+    ownerUsername: 'admin'
+  },
+  {
+    farmId: 'farm-003',
+    name: 'Hydroponic Farm TP.HCM',
+    description: 'Urban hydroponic system for fresh vegetables',
+    location: {
+      latitude: 10.8231,
+      longitude: 106.6297,
+      altitude: 5,
+      address: 'Quận 12, TP. Hồ Chí Minh, Việt Nam'
+    },
+    area: 30,
     ownerUsername: 'admin'
   }
 ];
 
 const ZONE_DEFINITIONS = [
+  // Farm 001 Zones
   {
     zoneId: 'zone-1a',
-    name: 'Greenhouse North',
-    description: 'Northern greenhouse block',
+    name: 'Nhà kính A - Rau xanh',
+    description: 'Greenhouse zone for leafy vegetables',
     farmId: 'farm-001',
-    cropType: 'Leafy Greens'
+    zoneType: 'greenhouse',
+    area: 15,
+    cropType: 'Leafy Greens',
+    isActive: true
   },
   {
     zoneId: 'zone-1b',
-    name: 'Greenhouse South',
-    description: 'Southern greenhouse block',
+    name: 'Nhà kính B - Cà chua',
+    description: 'Greenhouse zone for tomatoes',
     farmId: 'farm-001',
-    cropType: 'Tomatoes'
+    zoneType: 'greenhouse',
+    area: 20,
+    cropType: 'Tomatoes',
+    isActive: true
+  },
+  {
+    zoneId: 'zone-1c',
+    name: 'Vùng ngoài trời',
+    description: 'Outdoor cultivation area',
+    farmId: 'farm-001',
+    zoneType: 'outdoor',
+    area: 15,
+    cropType: 'Mixed Vegetables',
+    isActive: true
+  },
+  // Farm 002 Zones
+  {
+    zoneId: 'zone-2a',
+    name: 'Khu A - Rau hữu cơ',
+    description: 'Organic vegetable zone A',
+    farmId: 'farm-002',
+    zoneType: 'outdoor',
+    area: 40,
+    cropType: 'Organic Vegetables',
+    isActive: true
+  },
+  {
+    zoneId: 'zone-2b',
+    name: 'Khu B - Dâu tây',
+    description: 'Strawberry cultivation zone',
+    farmId: 'farm-002',
+    zoneType: 'greenhouse',
+    area: 30,
+    cropType: 'Strawberries',
+    isActive: true
+  },
+  {
+    zoneId: 'zone-2c',
+    name: 'Khu C - Hoa',
+    description: 'Flower cultivation zone',
+    farmId: 'farm-002',
+    zoneType: 'greenhouse',
+    area: 30,
+    cropType: 'Flowers',
+    isActive: true
+  },
+  // Farm 003 Zones
+  {
+    zoneId: 'zone-3a',
+    name: 'Hệ thống Hydroponic 1',
+    description: 'Hydroponic system for lettuce',
+    farmId: 'farm-003',
+    zoneType: 'indoor',
+    area: 10,
+    cropType: 'Lettuce',
+    isActive: true
+  },
+  {
+    zoneId: 'zone-3b',
+    name: 'Hệ thống Hydroponic 2',
+    description: 'Hydroponic system for herbs',
+    farmId: 'farm-003',
+    zoneType: 'indoor',
+    area: 10,
+    cropType: 'Herbs',
+    isActive: true
+  },
+  {
+    zoneId: 'zone-3c',
+    name: 'Hệ thống NFT',
+    description: 'NFT (Nutrient Film Technique) system',
+    farmId: 'farm-003',
+    zoneType: 'indoor',
+    area: 10,
+    cropType: 'Microgreens',
+    isActive: true
   }
 ];
 
 const ACTUATOR_DEFINITIONS = [
+  // Farm 001 Actuators
   {
     deviceId: 'pump-main-zone-123',
     actuatorType: 'pump',
-    name: 'Pump pump-main-zone-123',
+    name: 'Water Pump - Zone 1A',
     farmId: 'farm-001',
     zoneId: 'zone-1a',
     address: '0.0.0.0:50051',
@@ -158,9 +310,61 @@ const ACTUATOR_DEFINITIONS = [
   {
     deviceId: 'fan-zone-A',
     actuatorType: 'fan',
-    name: 'Ventilation Fan 01',
+    name: 'Ventilation Fan - Zone 1B',
     farmId: 'farm-001',
     zoneId: 'zone-1b',
+    address: '0.0.0.0:50051',
+    status: 'OFF',
+    mode: 'MANUAL'
+  },
+  {
+    deviceId: 'pump-zone-1b',
+    actuatorType: 'pump',
+    name: 'Water Pump - Zone 1B',
+    farmId: 'farm-001',
+    zoneId: 'zone-1b',
+    address: '0.0.0.0:50051',
+    status: 'OFF',
+    mode: 'MANUAL'
+  },
+  // Farm 002 Actuators
+  {
+    deviceId: 'pump-zone-2a',
+    actuatorType: 'pump',
+    name: 'Irrigation Pump - Zone 2A',
+    farmId: 'farm-002',
+    zoneId: 'zone-2a',
+    address: '0.0.0.0:50051',
+    status: 'OFF',
+    mode: 'MANUAL'
+  },
+  {
+    deviceId: 'fan-zone-2b',
+    actuatorType: 'fan',
+    name: 'Greenhouse Fan - Zone 2B',
+    farmId: 'farm-002',
+    zoneId: 'zone-2b',
+    address: '0.0.0.0:50051',
+    status: 'OFF',
+    mode: 'MANUAL'
+  },
+  // Farm 003 Actuators
+  {
+    deviceId: 'pump-hydro-3a',
+    actuatorType: 'pump',
+    name: 'Nutrient Pump - Hydroponic 3A',
+    farmId: 'farm-003',
+    zoneId: 'zone-3a',
+    address: '0.0.0.0:50051',
+    status: 'OFF',
+    mode: 'MANUAL'
+  },
+  {
+    deviceId: 'fan-hydro-3a',
+    actuatorType: 'fan',
+    name: 'Circulation Fan - Hydroponic 3A',
+    farmId: 'farm-003',
+    zoneId: 'zone-3a',
     address: '0.0.0.0:50051',
     status: 'OFF',
     mode: 'MANUAL'

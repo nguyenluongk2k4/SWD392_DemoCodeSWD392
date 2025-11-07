@@ -29,6 +29,10 @@ class WebSocketGateway {
       this.broadcast('sensor:data', data);
     });
 
+    eventBus.subscribe(Events.SENSOR_DATA_PROCESSED, (data) => {
+      this.broadcast('sensor:data:processed', data);
+    });
+
     // Listen to device control events
     eventBus.subscribe(Events.DEVICE_CONTROLLED, (data) => {
       this.broadcast('device:controlled', data);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import '../../styles/components/_sensorData.css';
+import socketService from '../../services/socket.service';
 
 const normalizeSensorData = (entry) => {
   if (!entry) {
@@ -56,6 +57,37 @@ const SensorData = ({ onLog }) => {
   useEffect(() => {
     loadSensorData();
   }, [loadSensorData]);
+
+  useEffect(() => {
+    const handleRealtime = (message) => {
+      const eventPayload = message?.data;
+      const realtimeDoc = eventPayload?.sensorData;
+      if (!realtimeDoc) {
+        return;
+      }
+
+      const hydrated = {
+        ...realtimeDoc,
+        sensor: eventPayload.sensor || realtimeDoc.sensor,
+        zone: eventPayload.zone || realtimeDoc.zone,
+      };
+
+      const normalized = normalizeSensorData(hydrated);
+
+      setSensorData((prev) => {
+        const withoutDuplicate = prev.filter((entry) => entry.id !== normalized.id);
+        return [normalized, ...withoutDuplicate].slice(0, 6);
+      });
+
+      onLog(`Live update: ${normalized.sensorId} = ${normalized.value}`, 'info');
+    };
+
+    socketService.on('sensor:data:processed', handleRealtime);
+
+    return () => {
+      socketService.off('sensor:data:processed', handleRealtime);
+    };
+  }, [onLog]);
 
   const handleFilterChange = (e) => {
     setFilter(e.target.value);

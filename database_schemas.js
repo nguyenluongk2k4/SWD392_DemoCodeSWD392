@@ -359,6 +359,21 @@ const sensorDataSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  sensorType: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SensorType',
+    index: true
+  },
+  farmId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Farm',
+    index: true
+  },
+  zoneId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Zone',
+    index: true
+  },
   value: {
     type: Number,
     required: true
@@ -370,8 +385,15 @@ const sensorDataSchema = new mongoose.Schema({
   },
   quality: {
     type: String,
-    enum: ['good', 'warning', 'error'],
+    enum: ['good', 'warning', 'critical', 'error'],
     default: 'good'
+  },
+  sourceTopic: {
+    type: String,
+    trim: true
+  },
+  rawPayload: {
+    type: mongoose.Schema.Types.Mixed
   },
   metadata: {
     batteryLevel: {

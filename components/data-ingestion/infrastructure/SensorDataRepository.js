@@ -11,7 +11,10 @@ const SENSOR_POPULATE = [
       { path: 'farmId' },
       { path: 'zoneId' }
     ]
-  }
+  },
+  { path: 'sensorType' },
+  { path: 'farmId' },
+  { path: 'zoneId' }
 ];
 
 class SensorDataRepository {

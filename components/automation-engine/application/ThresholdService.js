@@ -122,10 +122,9 @@ class ThresholdService {
         }
       }
       
-      const threshold = await ThresholdRepository.update(id, {
-        ...updateData,
-        updatedBy: userId
-      });
+      // Note: userId parameter kept for future audit trail implementation
+      // Currently, updatedAt timestamp is automatically set by Mongoose timestamps
+      const threshold = await ThresholdRepository.update(id, updateData);
       
       // Emit event
       eventBus.emit(Events.THRESHOLD_UPDATED, threshold);

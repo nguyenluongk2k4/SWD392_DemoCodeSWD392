@@ -7,8 +7,7 @@ const THRESHOLD_POPULATE = [
   { path: 'farmId' },
   { path: 'zoneId' },
   { path: 'action.actuator' },
-  { path: 'createdBy', select: 'username email' },
-  { path: 'updatedBy', select: 'username email' }
+  { path: 'createdBy', select: 'username email fullName' }
 ];
 
 class ThresholdRepository {

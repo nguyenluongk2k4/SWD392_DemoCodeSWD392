@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const NotificationService = require('../application/NotificationService');
-const { successResponse, errorResponse } = require('../../../shared-kernel/utils/response');
+const ResponseHandler = require('../../../shared-kernel/utils/response');
 const logger = require('../../../shared-kernel/utils/logger');
 
 class AlertController {
@@ -26,11 +26,11 @@ class AlertController {
       
       const result = await NotificationService.getAlerts(filters);
       
-      return successResponse(res, result, 'Alerts retrieved successfully');
+      return ResponseHandler.success(res, result, 'Alerts retrieved successfully');
       
     } catch (error) {
       logger.error('Error in getAllAlerts controller:', error);
-      return errorResponse(res, error.message, 500);
+      return ResponseHandler.serverError(res, error.message);
     }
   }
   
@@ -42,11 +42,11 @@ class AlertController {
     try {
       const alerts = await NotificationService.getActiveAlerts();
       
-      return successResponse(res, alerts, 'Active alerts retrieved successfully');
+      return ResponseHandler.success(res, alerts, 'Active alerts retrieved successfully');
       
     } catch (error) {
       logger.error('Error in getActiveAlerts controller:', error);
-      return errorResponse(res, error.message, 500);
+      return ResponseHandler.serverError(res, error.message);
     }
   }
   
@@ -60,11 +60,11 @@ class AlertController {
       
       const alert = await NotificationService.acknowledgeAlert(req.params.id, userId);
       
-      return successResponse(res, alert, 'Alert acknowledged successfully');
+      return ResponseHandler.success(res, alert, 'Alert acknowledged successfully');
       
     } catch (error) {
       logger.error('Error in acknowledgeAlert controller:', error);
-      return errorResponse(res, error.message, 400);
+      return ResponseHandler.badRequest(res, error.message);
     }
   }
   
@@ -79,11 +79,11 @@ class AlertController {
       
       const alert = await NotificationService.resolveAlert(req.params.id, userId, notes);
       
-      return successResponse(res, alert, 'Alert resolved successfully');
+      return ResponseHandler.success(res, alert, 'Alert resolved successfully');
       
     } catch (error) {
       logger.error('Error in resolveAlert controller:', error);
-      return errorResponse(res, error.message, 400);
+      return ResponseHandler.badRequest(res, error.message);
     }
   }
   
@@ -100,11 +100,11 @@ class AlertController {
       
       const stats = await NotificationService.getAlertStatistics(filters);
       
-      return successResponse(res, stats, 'Statistics retrieved successfully');
+      return ResponseHandler.success(res, stats, 'Statistics retrieved successfully');
       
     } catch (error) {
       logger.error('Error in getStatistics controller:', error);
-      return errorResponse(res, error.message, 500);
+      return ResponseHandler.serverError(res, error.message);
     }
   }
   
@@ -117,16 +117,37 @@ class AlertController {
       const { channel, recipient, message } = req.body;
       
       if (!channel || !recipient) {
-        return errorResponse(res, 'Channel and recipient are required', 400);
+        return ResponseHandler.badRequest(res, 'Channel and recipient are required');
       }
       
       const result = await NotificationService.testNotification(channel, recipient, message);
       
-      return successResponse(res, result, 'Test notification sent');
+      return ResponseHandler.success(res, result, 'Test notification sent');
       
     } catch (error) {
       logger.error('Error in testNotification controller:', error);
-      return errorResponse(res, error.message, 400);
+      return ResponseHandler.badRequest(res, error.message);
+    }
+  }
+  
+  /**
+   * Verify SMTP email connection
+   * GET /api/alerts/verify-email
+   */
+  async verifyEmailConnection(req, res) {
+    try {
+      const AlertingClients = require('../infrastructure/AlertingClients');
+      const result = await AlertingClients.verifyEmailConnection();
+      
+      if (result.connected) {
+        return ResponseHandler.success(res, result, 'SMTP connection verified');
+      } else {
+        return ResponseHandler.serverError(res, result.message);
+      }
+      
+    } catch (error) {
+      logger.error('Error verifying email connection:', error);
+      return ResponseHandler.serverError(res, error.message);
     }
   }
 }
@@ -138,6 +159,7 @@ const controller = new AlertController();
 router.get('/', controller.getAllAlerts.bind(controller));
 router.get('/active', controller.getActiveAlerts.bind(controller));
 router.get('/stats', controller.getStatistics.bind(controller));
+router.get('/verify-email', controller.verifyEmailConnection.bind(controller));
 router.post('/test-notification', controller.testNotification.bind(controller));
 router.post('/:id/acknowledge', controller.acknowledgeAlert.bind(controller));
 router.post('/:id/resolve', controller.resolveAlert.bind(controller));

@@ -5,6 +5,17 @@ const { SensorType } = require('../../../database_schemas');
 const logger = require('../../../shared-kernel/utils/logger');
 
 class SensorTypeRepository {
+  async findAll() {
+    try {
+      return await SensorType.find()
+        .select('name displayName unit description minValue maxValue')
+        .sort({ displayName: 1 });
+    } catch (error) {
+      logger.error('Error finding all sensor types:', error);
+      throw error;
+    }
+  }
+
   async findByName(name) {
     try {
       if (!name) {

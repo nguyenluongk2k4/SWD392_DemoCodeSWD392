@@ -2,8 +2,31 @@
 const express = require('express');
 const router = express.Router();
 const ThresholdService = require('../application/ThresholdService');
-const { successResponse, errorResponse } = require('../../../shared-kernel/utils/response');
+const ResponseHandler = require('../../../shared-kernel/utils/response');
 const logger = require('../../../shared-kernel/utils/logger');
+const { User } = require('../../../database_schemas');
+
+// Cache for demo user ID
+let demoUserId = null;
+
+async function getDemoUserId() {
+  if (demoUserId) return demoUserId;
+  
+  try {
+    const adminUser = await User.findOne({ username: 'admin' });
+    if (adminUser) {
+      demoUserId = adminUser._id.toString();
+      return demoUserId;
+    }
+    
+    // Fallback: create a temporary demo user if admin doesn't exist
+    logger.warn('Admin user not found, using fallback user ID');
+    return '507f1f77bcf86cd799439011';
+  } catch (error) {
+    logger.error('Error getting demo user ID:', error);
+    return '507f1f77bcf86cd799439011';
+  }
+}
 
 class ThresholdController {
   
@@ -13,15 +36,28 @@ class ThresholdController {
    */
   async createThreshold(req, res) {
     try {
-      const userId = req.user?.id; // Assuming auth middleware sets req.user
+      // TODO: Replace with actual user ID from authentication middleware
+      const userId = req.user?.id || await getDemoUserId();
       
-      const threshold = await ThresholdService.createThreshold(req.body, userId);
+      // Clean up empty string values that should be undefined for ObjectId fields
+      const thresholdData = { ...req.body };
+      if (thresholdData.action && thresholdData.action.actuator === '') {
+        delete thresholdData.action.actuator;
+      }
+      if (thresholdData.farmId === '') {
+        delete thresholdData.farmId;
+      }
+      if (thresholdData.zoneId === '') {
+        delete thresholdData.zoneId;
+      }
       
-      return successResponse(res, threshold, 'Threshold created successfully', 201);
+      const threshold = await ThresholdService.createThreshold(thresholdData, userId);
+      
+      return ResponseHandler.created(res, threshold, 'Threshold created successfully');
       
     } catch (error) {
       logger.error('Error in createThreshold controller:', error);
-      return errorResponse(res, error.message, 400);
+      return ResponseHandler.badRequest(res, error.message);
     }
   }
   
@@ -39,11 +75,11 @@ class ThresholdController {
       
       const thresholds = await ThresholdService.getAllThresholds(filters);
       
-      return successResponse(res, thresholds, 'Thresholds retrieved successfully');
+      return ResponseHandler.success(res, thresholds, 'Thresholds retrieved successfully');
       
     } catch (error) {
       logger.error('Error in getAllThresholds controller:', error);
-      return errorResponse(res, error.message, 500);
+      return ResponseHandler.serverError(res, error.message);
     }
   }
   
@@ -55,11 +91,11 @@ class ThresholdController {
     try {
       const threshold = await ThresholdService.getThresholdById(req.params.id);
       
-      return successResponse(res, threshold, 'Threshold retrieved successfully');
+      return ResponseHandler.success(res, threshold, 'Threshold retrieved successfully');
       
     } catch (error) {
       logger.error('Error in getThresholdById controller:', error);
-      return errorResponse(res, error.message, 404);
+      return ResponseHandler.notFound(res, error.message);
     }
   }
   
@@ -69,19 +105,32 @@ class ThresholdController {
    */
   async updateThreshold(req, res) {
     try {
-      const userId = req.user?.id;
+      // TODO: Replace with actual user ID from authentication middleware
+      const userId = req.user?.id || await getDemoUserId();
+      
+      // Clean up empty string values that should be undefined for ObjectId fields
+      const updateData = { ...req.body };
+      if (updateData.action && updateData.action.actuator === '') {
+        delete updateData.action.actuator;
+      }
+      if (updateData.farmId === '') {
+        delete updateData.farmId;
+      }
+      if (updateData.zoneId === '') {
+        delete updateData.zoneId;
+      }
       
       const threshold = await ThresholdService.updateThreshold(
         req.params.id,
-        req.body,
+        updateData,
         userId
       );
       
-      return successResponse(res, threshold, 'Threshold updated successfully');
+      return ResponseHandler.success(res, threshold, 'Threshold updated successfully');
       
     } catch (error) {
       logger.error('Error in updateThreshold controller:', error);
-      return errorResponse(res, error.message, 400);
+      return ResponseHandler.badRequest(res, error.message);
     }
   }
   
@@ -93,11 +142,11 @@ class ThresholdController {
     try {
       await ThresholdService.deleteThreshold(req.params.id);
       
-      return successResponse(res, null, 'Threshold deleted successfully');
+      return ResponseHandler.success(res, null, 'Threshold deleted successfully');
       
     } catch (error) {
       logger.error('Error in deleteThreshold controller:', error);
-      return errorResponse(res, error.message, 400);
+      return ResponseHandler.badRequest(res, error.message);
     }
   }
   
@@ -111,7 +160,7 @@ class ThresholdController {
       
       const threshold = await ThresholdService.toggleThreshold(req.params.id, isActive);
       
-      return successResponse(
+      return ResponseHandler.success(
         res,
         threshold,
         `Threshold ${isActive ? 'activated' : 'deactivated'} successfully`
@@ -119,7 +168,7 @@ class ThresholdController {
       
     } catch (error) {
       logger.error('Error in toggleThreshold controller:', error);
-      return errorResponse(res, error.message, 400);
+      return ResponseHandler.badRequest(res, error.message);
     }
   }
   
@@ -131,11 +180,11 @@ class ThresholdController {
     try {
       const stats = await ThresholdService.getStatistics();
       
-      return successResponse(res, stats, 'Statistics retrieved successfully');
+      return ResponseHandler.success(res, stats, 'Statistics retrieved successfully');
       
     } catch (error) {
       logger.error('Error in getStatistics controller:', error);
-      return errorResponse(res, error.message, 500);
+      return ResponseHandler.serverError(res, error.message);
     }
   }
 }

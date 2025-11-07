@@ -10,6 +10,7 @@ const Layout = ({ children, currentPage, onPageChange }) => {
     { id: 'zones', label: 'Quản Lí Zones', icon: 'fas fa-map' },
     { id: 'sensors', label: 'Quản Lí Sensors', icon: 'fas fa-microchip' },
     { id: 'actuators', label: 'Quản Lí Actuators', icon: 'fas fa-sliders-h' },
+    { id: 'thresholds', label: 'Quản Lí Ngưỡng', icon: 'fas fa-signal' },
     { id: 'sensor-logs', label: 'Sensor Logs', icon: 'fas fa-history' }
   ];
 

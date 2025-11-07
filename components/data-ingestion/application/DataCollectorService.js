@@ -17,16 +17,30 @@ class DataCollectorService {
         return;
       }
 
-      const normalization = await this.normalizeSensorData(eventData.data);
+  const normalization = await this.normalizeSensorData(eventData.data, eventData.topic);
 
       if (!normalization) {
         logger.warn('Invalid sensor data received:', eventData.data);
         return;
       }
 
+      logger.info('🧮 Normalized sensor document ready to persist', {
+        sensorId: normalization.sensor.sensorId,
+        sensorType: normalization.sensorType?.name,
+        farm: normalization.farm?.name,
+        zone: normalization.zone?.name,
+        payload: normalization.document
+      });
+
       const savedData = await SensorDataRepository.create(normalization.document);
 
-      logger.info(`✅ Sensor data saved: ${normalization.sensor.sensorId} - ${savedData.value}`);
+      logger.info(`✅ Sensor data saved: ${normalization.sensor.sensorId} - ${savedData.value}`, {
+        storedId: savedData._id,
+        sensorType: savedData.sensorType,
+        farmId: savedData.farmId,
+        zoneId: savedData.zoneId,
+        topic: savedData.sourceTopic
+      });
 
       eventBus.publish(Events.SENSOR_DATA_PROCESSED, {
         sensorData: savedData,
@@ -47,7 +61,7 @@ class DataCollectorService {
     }
   }
 
-  async normalizeSensorData(data) {
+  async normalizeSensorData(data, topic) {
     try {
       if (!data.sensorId || data.value === undefined) {
         return null;
@@ -78,9 +92,14 @@ class DataCollectorService {
         zone,
         document: {
           sensor: sensor._id,
+          sensorType: sensorType?._id,
+          farmId: farm?._id,
+          zoneId: zone?._id,
           value: numericValue,
           timestamp,
           quality: this.determineQuality(sensorType?.name, numericValue),
+          sourceTopic: topic,
+          rawPayload: data,
           metadata: {
             batteryLevel: data?.metadata?.batteryLevel ?? data?.batteryLevel,
             signalStrength: data?.metadata?.signalStrength ?? data?.signalStrength

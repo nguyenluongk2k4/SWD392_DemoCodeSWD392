@@ -8,7 +8,10 @@ import FarmManagement from './components/Management/FarmManagement';
 import ZoneManagement from './components/Management/ZoneManagement';
 import SensorManagement from './components/Management/SensorManagement';
 import ActuatorManagement from './components/Management/ActuatorManagement';
+import ThresholdManagement from './components/Management/ThresholdManagement';
 import Logs from './components/Logs/Logs';
+import API_CONFIG from './config/api.config';
+import socketService from './services/socket.service';
 
 function App() {
   const [serverStatus, setServerStatus] = useState('checking');
@@ -23,7 +26,7 @@ function App() {
 
   const checkServerStatus = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/demo/sensor-data');
+      const response = await fetch(API_CONFIG.getUrl(API_CONFIG.ENDPOINTS.DEMO_SENSOR_DATA));
       const data = await response.json();
 
       if (response.ok && data.success) {
@@ -49,6 +52,29 @@ function App() {
     return () => clearInterval(interval);
   }, [checkServerStatus]);
 
+  useEffect(() => {
+    const handleSensorData = (message) => {
+      const sensorId = message?.data?.rawPayload?.sensorId || message?.data?.sensor?.sensorId || 'unknown';
+      addLog(`Real-time sensor payload received (${sensorId})`, 'info');
+      setLastUpdate(message.timestamp);
+    };
+
+    const handleSensorProcessed = (message) => {
+      const sensorId = message?.data?.sensor?.sensorId || message?.data?.sensorData?.sensorId || 'unknown';
+      addLog(`Sensor data processed in real-time (${sensorId})`, 'success');
+      setLastUpdate(message.timestamp);
+    };
+
+  socketService.getSocket();
+  socketService.on('sensor:data', handleSensorData);
+  socketService.on('sensor:data:processed', handleSensorProcessed);
+
+    return () => {
+      socketService.off('sensor:data', handleSensorData);
+      socketService.off('sensor:data:processed', handleSensorProcessed);
+    };
+  }, [addLog]);
+
   const handleDataPublished = () => {
     // Refresh sensor data after publishing
     setTimeout(() => {
@@ -70,6 +96,8 @@ function App() {
         return <SensorManagement onLog={addLog} />;
       case 'actuators':
         return <ActuatorManagement onLog={addLog} />;
+      case 'thresholds':
+        return <ThresholdManagement onLog={addLog} />;
       case 'sensor-logs':
         return <SensorManagement onLog={addLog} />;
       default:

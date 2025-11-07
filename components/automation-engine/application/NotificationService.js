@@ -72,21 +72,17 @@ class NotificationService {
    */
   async getNotificationSettings(alert) {
     try {
-      // Default channels based on severity
+      // Simplified: Only email channel based on severity
       let channels = [];
       
       switch (alert.severity) {
         case 'critical':
-          channels = ['email', 'sms', 'push'];
-          break;
         case 'high':
-          channels = ['email', 'push'];
-          break;
         case 'medium':
-          channels = ['email'];
+          channels = ['email']; // Only email for all important alerts
           break;
         case 'low':
-          channels = ['websocket']; // Only real-time, no persistent notification
+          channels = ['websocket']; // Only real-time WebSocket, no email
           break;
       }
       
@@ -98,7 +94,7 @@ class NotificationService {
       if (thresholdDoc && thresholdDoc.action && thresholdDoc.action.recipients) {
         recipients = thresholdDoc.action.recipients;
       } else {
-        // Default recipients - in production, get from user preferences
+        // Default recipients - get from config or database
         recipients = this.getDefaultRecipients(alert);
       }
       
@@ -114,13 +110,14 @@ class NotificationService {
    * Get default recipients for alerts
    */
   getDefaultRecipients(alert) {
-    // In production, this should query users with notification preferences
-    // For now, return from config or mock data
-    return ['admin@example.com']; // Mock recipient
+    // In production, query users with notification preferences from database
+    // For demo, return from environment variable or default
+    const defaultEmail = process.env.DEFAULT_ALERT_EMAIL || 'admin@smartagri.com';
+    return [defaultEmail];
   }
   
   /**
-   * UC09: Send notifications via multiple channels
+   * UC09: Send notifications via email only
    */
   async sendNotifications(channels, recipients, alert) {
     try {
@@ -128,50 +125,29 @@ class NotificationService {
       
       for (const channel of channels) {
         if (channel === 'websocket') {
-          // WebSocket is handled by eventBus
+          // WebSocket is handled by eventBus, skip here
           continue;
         }
         
-        for (const recipient of recipients) {
-          let result;
-          
-          switch (channel) {
-            case 'email':
-              result = await AlertingClients.sendEmail(
-                recipient,
-                alert.title,
-                alert.message
-              );
-              break;
-              
-            case 'sms':
-              result = await AlertingClients.sendSMS(
-                recipient,
-                `${alert.title}: ${alert.message}`
-              );
-              break;
-              
-            case 'push':
-              result = await AlertingClients.sendPushNotification(
-                recipient,
-                alert.title,
-                alert.message,
-                { alertId: alert._id }
-              );
-              break;
-              
-            default:
-              logger.warn(`Unknown notification channel: ${channel}`);
-              continue;
+        if (channel === 'email') {
+          for (const recipient of recipients) {
+            const result = await AlertingClients.sendEmail(
+              recipient,
+              alert.title,
+              alert.message
+            );
+            
+            notifications.push({
+              channel: 'email',
+              recipient,
+              status: result.status,
+              sentAt: new Date(),
+              messageId: result.messageId || null,
+              error: result.error || null
+            });
           }
-          
-          notifications.push({
-            channel,
-            recipient,
-            status: result.status,
-            sentAt: new Date(),
-            error: result.error || null
-          });
+        } else {
+          logger.warn(`⚠️ Unsupported notification channel: ${channel}`);
         }
       }
       
@@ -268,41 +244,21 @@ class NotificationService {
   }
   
   /**
-   * Test notification delivery
+   * Test notification delivery (email only)
    */
   async testNotification(channel, recipient, message) {
     try {
       logger.info(`Testing ${channel} notification to ${recipient}`);
       
-      let result;
-      
-      switch (channel) {
-        case 'email':
-          result = await AlertingClients.sendEmail(
-            recipient,
-            'Test Notification - Smart Agriculture System',
-            message || 'This is a test notification from Smart Agriculture System.'
-          );
-          break;
-          
-        case 'sms':
-          result = await AlertingClients.sendSMS(
-            recipient,
-            message || 'Test SMS from Smart Agriculture System'
-          );
-          break;
-          
-        case 'push':
-          result = await AlertingClients.sendPushNotification(
-            recipient,
-            'Test Notification',
-            message || 'This is a test push notification.'
-          );
-          break;
-          
-        default:
-          throw new Error(`Unknown notification channel: ${channel}`);
+      if (channel !== 'email') {
+        throw new Error('Only email channel is supported');
       }
+      
+      const result = await AlertingClients.sendEmail(
+        recipient,
+        '🧪 Test Notification - Smart Agriculture System',
+        message || 'This is a test email notification from Smart Agriculture System. If you received this, your email configuration is working correctly!'
+      );
       
       return result;
       
