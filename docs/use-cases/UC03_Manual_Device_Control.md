@@ -1,80 +1,99 @@
 # UC03 — Điều khiển thiết bị thủ công (Manual Device Control)
 
-## Mục tiêu
-Cho phép người dùng (Owner/Technician/Worker) bật/tắt hoặc gửi lệnh thủ công tới actuator (bơm, quạt, đèn) từ dashboard.
+## Goal
+Cho phép operator bật/tắt/toggle actuator từ dashboard và quan sát kết quả ngay lập tức qua MQTT + WebSocket.
 
 ## Actors
-- User (Owner / Technician / Field Worker)
-- Dashboard UI
+- Owner / Technician / Field Worker
+- Actuator thiết bị (pump, fan, valve…)
 
-## System Components (Lifelines)
-- UI (Browser / Mobile)
-- API Gateway (REST)
-- DeviceController / ActuatorService
+## Components (Lifelines)
+- React Dashboard (`ActuatorManagement`)
+- API Gateway → `DeviceController`
+- `ActuatorService` + `ActuatorRepository`
+- `MqttPublishService` (gửi lệnh), `MqttHandler` (nhận status)
 - MQTT Broker
-- Actuator Device (hardware)
-- Event Bus
-- Audit / ActionLog Service
+- Event Bus + WebSocket Gateway (broadcast `device:controlled`)
+- MongoDB (lưu trạng thái actuator)
 
 ## Preconditions
-- Người dùng đã đăng nhập và có quyền điều khiển thiết bị.
-- Thiết bị đã đăng ký và kết nối đến MQTT broker.
+- Actuator đã được seed/đăng ký (ActuatorRepository) và có `deviceId` hợp lệ.
+- `ENABLE_MQTT=true` hoặc có gRPC server nếu sử dụng đường gRPC.
+- Người dùng đăng nhập và có quyền điều khiển.
 
 ## Postconditions
-- Thiết bị nhận lệnh và thay đổi trạng thái.
-- Hệ thống ghi log hành động và cập nhật dashboard trạng thái.
+- Command được gửi tới thiết bị qua MQTT (hoặc gRPC).
+- Trạng thái actuator trong DB được cập nhật; sự kiện realtime đẩy tới UI.
 
 ---
 
-## Main Flow (REST → MQTT)
-Participants: UI → API Gateway → ActuatorService → MQTT Broker → Actuator → DataCollector/EventBus → UI
+## Main Flow — REST ➝ MQTT
+1. Người dùng chọn thiết bị trên dashboard và gửi lệnh `POST /api/devices/control/:deviceId` với body `{ "command": "on" }`.
+2. `DeviceController` (Express) validate bằng Joi → xác định user đang điều khiển.
+3. `ActuatorService.controlDevice()` tra cứu thiết bị, kiểm tra command (`on/off/toggle`).
+4. Service gọi `MqttPublishService.publishControlCommand()` → publish tới topic `devices/{deviceId}/control` (thay ký tự `+` trong cấu hình).
+5. Thiết bị nhận lệnh và phản hồi (tuỳ thiết kế) qua topic status.
+6. `ActuatorRepository.updateStatus()` cập nhật DB và trả thiết bị mới.
+7. Service phát `eventBus.publish(Events.DEVICE_CONTROLLED, { deviceId, command, controlledBy, timestamp })`.
+8. WebSocket Gateway lắng nghe event → phát `device:controlled` cho toàn bộ client.
+9. API trả HTTP 200 với dữ liệu thiết bị → UI hiển thị thành công và trạng thái mới.
 
-1. User clicks "Turn ON" on the dashboard for `actuatorId`.
-2. UI sends `POST /api/devices/{actuatorId}/commands` with payload { command: "on", params: {...} }.
-3. API Gateway authenticates and authorizes the user.
-4. API Gateway forwards request to ActuatorService/DeviceController.
-5. ActuatorService validates actuator existence and mapping to farmZone.
-6. ActuatorService creates an ActionLog entry (Audit) with status `pending`.
-7. ActuatorService publishes MQTT message to topic `actuators/{farmZone}/{actuatorId}/commands` with command payload.
-8. MQTT Broker delivers message to actuator device.
-9. Actuator executes command and optionally publishes status update to `actuators/{actuatorId}/status`.
-10. DataCollector (or ActuatorService subscription) receives status update and persists to DB.
-11. Event Bus emits `DEVICE_STATUS_CHANGED` and WebSocket Gateway broadcasts updated status to UI.
-12. ActuatorService updates ActionLog status to `completed` and returns HTTP 200 to UI.
-13. UI shows success and updated status.
+## Optional Flow — gRPC Control
+1. UI/automation gửi `POST /api/devices/grpc/control/:deviceId` body `{ "action": "TURN_ON", "address": "host:50051" }`.
+2. Controller lấy gRPC client (`GrpcClient`) gọi `controlActuator`.
+3. Kết quả trả về dùng `ActuatorService.updateActuatorStatus()` cập nhật DB và phát event tương tự.
 
-## Alternate Flows
-- AF1: Device offline — If no acknowledgement within timeout, ActuatorService marks ActionLog as `failed` and responds HTTP 504 with error message. Notification may be sent to the user.
-- AF2: Unauthorized user — API returns HTTP 403.
-- AF3: Validation fail (invalid command) — API returns HTTP 400 with error details.
+## Alternate / Exception
+- **Device không tồn tại:** ActuatorService ném lỗi → API trả 404.
+- **Command không hợp lệ:** Joi hoặc service trả 400, không publish MQTT.
+- **MQTT broker unreachable:** `MqttPublishService` ném lỗi → API trả 500 và log.
+- **Device ở chế độ auto:** Service log cảnh báo, vẫn có thể override nếu cần (ghi `controlledBy=user`).
 
-## Data contracts
-- Command payload (REST):
+## Data Contracts
+- **REST request:**
 ```json
-{ "command": "on", "params": { "duration": 60 } }
+POST /api/devices/control/pump-main-zone-123
+{ "command": "off" }
 ```
-- MQTT command payload:
+- **MQTT control payload (theo MqttPublishService):**
 ```json
-{ "cmdId": "uuid-1234", "command": "on", "params": {"duration":60}, "timestamp": "2025-10-30T09:00:00Z" }
+{
+	"deviceId": "pump-main-zone-123",
+	"command": "off",
+	"timestamp": "2025-11-07T15:40:00.123Z"
+}
 ```
-- Actuator status event:
+- **WebSocket broadcast:**
 ```json
-{ "actuatorId": "pump-01", "status": "on", "timestamp": "..." }
+{
+	"event": "device:controlled",
+	"timestamp": "2025-11-07T15:40:00.456Z",
+	"data": {
+		"deviceId": "pump-main-zone-123",
+		"command": "off",
+		"controlledBy": "tech.nguyen"
+	}
+}
 ```
 
-## Diagram notes
-- Sequence diagram: UI→API→ActuatorService→MQTT→Actuator→(status)→DataCollector→EventBus→WebSocket→UI.
-- Communication diagram: REST channel between UI and API Gateway; MQTT between ActuatorService and Actuator; DB link for logs/status.
+## Diagram / Slide Notes
+- Sequence: UI → API Gateway → DeviceController → ActuatorService → MQTT broker → Device → (status) → EventBus/WebSocket → UI.
+- Highlight Logging tại ActuatorService và MQTT Publish; optional nhánh gRPC.
 
-## Edge cases and retries
-- Command deduplication on device side (cmdId).
-- Retry policy: ActuatorService retries N times before marking failed.
-- Circuit breaker to avoid sending commands if actuator repeatedly fails.
+## Acceptance Checks
+1. Gửi lệnh ON qua REST, quan sát log MQTT và WebSocket, DB cập nhật status.
+2. Tắt broker → lệnh trả lỗi 500, log cảnh báo.
+3. Thử gRPC endpoint với server demo → xác nhận response và DB cập nhật.
 
-## Test cases
-1. Send valid ON command; assert device receives it and UI updates status.
-2. Simulate device offline; assert ActionLog marked failed and API returns timeout.
-
----
-
-File: `docs/use-cases/UC03_Manual_Device_Control.md`
+## Additional Specifications
+- **Authorization matrix:**
+	- Owner, Technician: toàn quyền điều khiển actuator trong farm.
+	- Field Worker: chỉ những actuator thuộc zone được phân công (`user.zoneIds`).
+	- Automation engine: sử dụng service account (`ROLE_AUTOMATION`) qua internal token.
+- **Audit logging:** `ActionLogRepository` ghi nhận `{ commandId, deviceId, command, status, issuedBy, context }`; log Winston ở mức `info` khi publish và `error` với stacktrace khi thất bại.
+- **Config toggles:**
+	- `ENABLE_MQTT=false` → API trả 503 “MQTT disabled”; không cố publish.
+	- `MQTT_TOPIC_DEVICE_CONTROL` mặc định `devices/+/control`; có thể override bằng env.
+- **Timeout & retry:** `ActuatorService` timeout mặc định 5s (configurable); retry 2 lần với backoff 500ms.
+- **Data retention:** Action logs lưu 90 ngày (TTL index); trạng thái actuator cập nhật tại collection `ActuatorStatus` với field `lastCommandId` để truy vết.
+- **Observability:** Metrics đẩy qua `shared-kernel/utils/metrics` (counter `device_control_success_total`, `device_control_failure_total`). Alerts nếu tỉ lệ fail > 5% trong 5 phút.
