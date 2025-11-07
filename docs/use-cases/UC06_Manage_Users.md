@@ -77,6 +77,14 @@ Participants: UI → API Gateway → UserController → UserService → UserRepo
 2. Update roles → assert `USER_ROLES_CHANGED` and token invalidation.
 3. Delete user → assert soft-delete and audit log entry.
 
+## Additional Specifications
+- **RBAC matrix:** chỉ Admin/Owner với permission `users:manage`; system disallow tự chỉnh role nếu không có quyền cao hơn role đích.
+- **Password policy:** tối thiểu 12 ký tự, yêu cầu uppercase/lowercase/number/special; kiểm tra trên server và hiển thị yêu cầu trên UI.
+- **Identity providers:** hỗ trợ import tài khoản từ SSO (OIDC) qua webhook `user.synced`; UserService hợp nhất hoặc tạo mới tùy policy `autoProvision`.
+- **Audit & compliance:** mọi thao tác CRUD ghi vào `UserAudit` với `oldValue`, `newValue`, `changedBy`, `reason`; lưu 1 năm.
+- **Notification hooks:** `USER_CREATED` kích hoạt email set-password link (qua NotificationService) nếu `ENABLE_EMAIL_ALERTS`; `USER_DISABLED` phát sự kiện để revoke sessions.
+- **Rate limiting:** API `POST /api/users` giới hạn 20 yêu cầu/giờ/người dùng để tránh lạm dụng; trả `429` khi vượt.
+
 ---
 
 File: `docs/use-cases/UC06_Manage_Users.md`

@@ -80,6 +80,14 @@ Participants: Admin → UI → API Gateway → RestoreService → Storage → Re
 1. Execute backup job; verify archive in storage and checksum.
 2. Restore archive to staging and validate key collections and app start.
 
+## Additional Specifications
+- **Storage options:** hỗ trợ local (`./backups`), S3, Azure Blob; cấu hình qua `BACKUP_PROVIDER` và biến kết nối tương ứng; bắt buộc mã hóa SSE/KMS khi dùng cloud.
+- **Scheduling:** cron biểu thức lấy từ env `BACKUP_CRON`; scheduler sử dụng `node-cron` chạy trong `monitoring-logging` module.
+- **Consistency:** trước khi dump bật chế độ read-only tạm (hoặc lock viết) nếu `ENABLE_DATABASE=true` và sử dụng `mongodump --oplog` để đảm bảo snapshot nhất quán.
+- **Retention & pruning:** giữ tối đa N bản sao (mặc định 14) cấu hình `BACKUP_RETENTION_DAYS`; job dọn dẹp chạy hàng ngày.
+- **Restore safeguards:** bắt buộc xác nhận hai bước (OTP/email) cho restore production; RestoreService kiểm tra version schema (`database_schema.json`) trước khi áp dụng.
+- **Observability:** metric `backup_jobs_total{status}`, `backup_duration_seconds`; log mức `error` với mã lỗi provider để điều tra nhanh.
+
 ---
 
 File: `docs/use-cases/UC14_Backup_Restore.md`

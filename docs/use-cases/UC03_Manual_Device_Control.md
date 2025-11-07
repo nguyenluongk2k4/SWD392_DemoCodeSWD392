@@ -90,10 +90,10 @@ POST /api/devices/control/pump-main-zone-123
 	- Owner, Technician: toàn quyền điều khiển actuator trong farm.
 	- Field Worker: chỉ những actuator thuộc zone được phân công (`user.zoneIds`).
 	- Automation engine: sử dụng service account (`ROLE_AUTOMATION`) qua internal token.
-- **Audit logging:** `ActionLogRepository` ghi nhận `{ commandId, deviceId, command, status, issuedBy, context }`; log Winston ở mức `info` khi publish và `error` với stacktrace khi thất bại.
+- **Audit logging:** mỗi yêu cầu control ghi lại qua `shared-kernel/utils/logger` (level `info` khi thành công, `error` khi thất bại) đồng thời persist vào collection `device_control_actions` với `{ commandId, deviceId, command, issuedBy, status }` để truy vết.
 - **Config toggles:**
 	- `ENABLE_MQTT=false` → API trả 503 “MQTT disabled”; không cố publish.
 	- `MQTT_TOPIC_DEVICE_CONTROL` mặc định `devices/+/control`; có thể override bằng env.
 - **Timeout & retry:** `ActuatorService` timeout mặc định 5s (configurable); retry 2 lần với backoff 500ms.
-- **Data retention:** Action logs lưu 90 ngày (TTL index); trạng thái actuator cập nhật tại collection `ActuatorStatus` với field `lastCommandId` để truy vết.
-- **Observability:** Metrics đẩy qua `shared-kernel/utils/metrics` (counter `device_control_success_total`, `device_control_failure_total`). Alerts nếu tỉ lệ fail > 5% trong 5 phút.
+- **Data retention:** bảng `device_control_actions` áp TTL 90 ngày; trạng thái actuator cập nhật ở `ActuatorStatus` kèm `lastCommandId` để tương quan.
+- **Observability:** counters Prometheus `device_control_success_total` và `device_control_failure_total`; alert nếu tỉ lệ lỗi >5% trong 5 phút.

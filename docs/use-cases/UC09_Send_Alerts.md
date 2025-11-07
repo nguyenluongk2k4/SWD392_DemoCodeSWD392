@@ -86,6 +86,14 @@ Participants: AutomationService → Event Bus → NotificationService → AlertR
 1. Trigger threshold exceeded; assert alert created, email sent (check logs), UI receives alert.
 2. Simulate SMTP failure; verify retry and eventual failed status.
 
+## Additional Specifications
+- **Channel toggles:** cấu hình qua env `ENABLE_EMAIL_ALERTS`, `ENABLE_SMS_ALERTS`, `ENABLE_PUSH_NOTIFICATIONS`; NotificationService bỏ qua channel tắt và ghi chú trong alert.
+- **Template management:** mẫu message lưu trong `components/monitoring-logging/presentation/templates`; hỗ trợ đa ngôn ngữ với biến `{zone}`, `{value}`, `{threshold}`.
+- **Recipient preferences:** `UserRepository` lưu `alertPreferences` (severity → channels); NotificationService hợp nhất với mặc định hệ thống.
+- **Rate limiting & dedupe:** áp dụng sliding window 5 phút; tạo `alert.hash` để loại bỏ thông báo trùng; log cảnh báo nếu vượt ngưỡng 30 alert/phút.
+- **Delivery observability:** metrics `alerts_sent_total{channel,status}` và `alerts_latency_seconds`; logs cấp `info` khi thành công, `error` với `providerResponse` khi thất bại.
+- **Failover:** nếu email thất bại ≥3 lần liên tiếp, chuyển sang push notification bắt buộc và phát `incident.reported` để đội vận hành kiểm tra kênh.
+
 ---
 
 File: `docs/use-cases/UC09_Send_Alerts.md`

@@ -73,6 +73,14 @@ Participants: DataCollector/AutomationService → Event Bus → IncidentService 
 1. Submit incident via UI and verify DB record, notification to technician and UI display.
 2. Simulate automatic failure detection; verify incident created and assigned.
 
+## Additional Specifications
+- **Prioritization policy:** độ ưu tiên tính từ `severity`, `device.criticality`, `automationConfidence`; IncidentService lưu `slaMinutes` để theo dõi.
+- **Assignment engine:** tích hợp lịch on-call; nếu không tìm được technician, escalates tới Owner sau 10 phút (event `incident.escalated`).
+- **Attachments handling:** file upload lưu S3/local object storage với signed URL, quét virus trước khi chấp nhận.
+- **Lifecycle states:** `new → acknowledged → in-progress → resolved → verified`; mỗi transition validate role (Technician chuyển in-progress, Owner/Technician đóng vụ việc).
+- **Notifications:** `INCIDENT_CREATED` kích hoạt NotificationService; `INCIDENT_RESOLVED` cập nhật UI và gửi recap email nếu severity ≥ medium.
+- **Analytics:** nightly job tính MTTR/MTTA từ incident history và lưu vào `IncidentMetrics` để dashboard hiển thị.
+
 ---
 
 File: `docs/use-cases/UC13_Report_Incident.md`

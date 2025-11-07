@@ -75,6 +75,14 @@ Participants: Sensor → MQTT Broker → DataCollector → Event Bus → Automat
 1. Publish low moisture value that violates threshold; assert actuator receives ON command and alert created.
 2. Simulate actuator offline; assert retry and alert behavior.
 
+## Additional Specifications
+- **Config toggles:** `ENABLE_MQTT` và `ENABLE_DATABASE` phải bật để pipeline đầy đủ; `MQTT_TOPIC_SENSOR_DATA` và `MQTT_TOPIC_DEVICE_CONTROL` có thể override nhưng phải giữ wildcard (`sensors/#`, `devices/+/control`).
+- **Threshold caching:** `AutomationService` nhận `threshold.created/updated/deleted` từ Event Bus để làm tươi cache; khởi động lại service cần load lại toàn bộ `ThresholdRepository` vào bộ nhớ.
+- **Debounce & cooldown:** mỗi hành động device có `cooldownMs` (config trong threshold); `AutomationService` lưu `lastActionAt` để tránh spam thiết bị.
+- **Audit & logging:** mọi quyết định tự động được log cấp `info` với `{ sensorId, thresholdId, deviceId, action }`; cảnh báo (`warn`) khi giá trị nằm ngoài ngưỡng an toàn tuyệt đối hoặc actuator không phản hồi.
+- **Fail-safe:** nếu `ActuatorService` báo lỗi 3 lần liên tiếp, `AutomationService` phát thêm `incident.reported` cho UC13 và gửi alert mức `critical`.
+- **Observability:** metric Prometheus `automation_actions_total{status="success|failure"}` và `threshold_violations_total` được increment; dashboards dùng để quan sát tần suất kích hoạt.
+
 ---
 
 File: `docs/use-cases/UC04_Auto_Irrigation.md`

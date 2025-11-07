@@ -69,6 +69,14 @@ Participants: UI → API Gateway → DeviceService → Database → API Gateway 
 1. Publish ON/OFF status from device; assert UI receives update and DB recorded entry.
 2. Stop device heartbeats; assert system marks device OFFLINE after timeout.
 
+## Additional Specifications
+- **Access control:** Technician/Owner với permission `devices:view`; Field Worker chỉ xem zone được gán (`user.zoneIds`).
+- **Status freshness:** `DeviceService` đánh dấu `stale=true` nếu `lastSeen` > `device.staleAfterMs` (config, mặc định 2 phút) và phát thêm event `device.status.changed` với flag này.
+- **Historical retention:** bảng `DeviceStatusHistory` TTL 30 ngày; aggregation nightly tạo thống kê uptime.
+- **Health scoring:** background job trong component monitoring-logging tính `healthScore` (0–100) dựa trên uptime và lỗi báo cáo; UI hiển thị huy hiệu màu tương ứng.
+- **Config toggles:** `MQTT_TOPIC_DEVICE_STATUS` quyết định pattern subscribe; nếu `ENABLE_MQTT=false` hệ thống fallback sang poll gRPC mỗi 60s.
+- **Observability:** metric `device_status_updates_total{status}` và gauge `devices_offline` phục vụ cảnh báo NOC.
+
 ---
 
 File: `docs/use-cases/UC12_View_Device_Status.md`

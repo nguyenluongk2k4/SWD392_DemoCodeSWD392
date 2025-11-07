@@ -71,6 +71,14 @@ Participants: UI → API Gateway → RoleController → RoleService → RoleRepo
 1. Create role and assign to user; assert permission effective.
 2. Update role permissions; assert affected users' access changes.
 
+## Additional Specifications
+- **Permission catalog:** danh sách permission keys duy trì trong `components/user-management/infrastructure/RoleRepository.js` và phản ánh ở `database_schemas.js`; RoleService cung cấp metadata cho UI để tránh hardcode.
+- **Role seeding:** `RoleRepository.initializeDefaultRoles()` chạy khi khởi động nếu `ENABLE_DATABASE`; bất kỳ thay đổi mặc định cần cập nhật seeder và tài liệu.
+- **Scope enforcement:** RoleService cấm gán quyền vượt cấp (ví dụ role tự cấp quyền `roles:manage` nếu người thao tác chỉ có `roles:read`).
+- **Caching & invalidation:** AuthService cache role-permission trong Redis/memory 5 phút; sự kiện `ROLE_UPDATED` và `ROLE_DELETED` purge cache ngay lập tức.
+- **Custom policies:** hỗ trợ attribute-based overrides (ABAC) qua `policyEngine.evaluate(user, action, resource)` trước khi quyết định cuối cùng.
+- **Audit trail:** mọi thay đổi role ghi vào `RoleAudit` với diff permission; hiển thị trong dashboard lịch sử.
+
 ---
 
 File: `docs/use-cases/UC07_Role_Permissions.md`

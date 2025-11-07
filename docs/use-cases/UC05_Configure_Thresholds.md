@@ -77,6 +77,14 @@ Participants: UI → API Gateway → ThresholdController → ThresholdService �
 2. Edit threshold → assert `THRESHOLD_UPDATED` emitted and rules changed.
 3. Attempt overlapping threshold → assert HTTP 409 and message.
 
+## Additional Specifications
+- **Authorization:** chỉ Owner/Technician với permission `thresholds:manage`; thao tác ghi log vào `ActionLog` với `performedBy`.
+- **Validation rules:** Joi schema bắt buộc `sensorType`, `farmZone`, `action.deviceId`; hỗ trợ `hysteresis` và `cooldownMs`; `minValue` và `maxValue` cho phép `null` nhưng không đồng thời null.
+- **Caching:** `ThresholdService` phát `Events.THRESHOLD_CREATED|UPDATED|DELETED`; `AutomationService` và bất kỳ worker nào subscribe để cập nhật cache nội bộ ngay lập tức.
+- **Versioning & audit:** mỗi threshold lưu `revision` tăng dần; thay đổi quan trọng lưu snapshot vào `ThresholdHistory` với diff để truy vết quyết định tự động.
+- **Bulk operations:** API hỗ trợ import/export CSV/JSON (qua endpoint phụ); validate từng dòng, rollback nếu sai cấu trúc.
+- **Configuration limits:** giới hạn 100 thresholds mỗi zone mặc định (configurable) để tránh quá tải; cảnh báo khi đạt 80%.
+
 ---
 
 File: `docs/use-cases/UC05_Configure_Thresholds.md`
