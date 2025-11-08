@@ -111,3 +111,6 @@ Cung cấp dashboard hiển thị tức thời và truy vấn lịch sử cho t�
 2. Gọi REST với `sensorId` cụ thể → nhận đúng dữ liệu populate.
 3. Tắt broker → dashboard vẫn trả lịch sử, status báo `disconnected`.
 
+
+
+2,3 4,5 6,7,9,12,13 14
