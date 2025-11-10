@@ -5,6 +5,7 @@ const logger = require('../../../shared-kernel/utils/logger');
 class RoleRepository {
   async create(roleData) {
     try {
+      // Step 4: execute SQL (INSERT) in communication diagram
       const role = new Role(roleData);
       await role.save();
       return role;
@@ -43,6 +44,7 @@ class RoleRepository {
 
   async update(roleId, updateData) {
     try {
+      // Step 4: execute SQL (UPDATE)
       return await Role.findByIdAndUpdate(
         roleId,
         { $set: updateData },
@@ -56,6 +58,7 @@ class RoleRepository {
 
   async delete(roleId) {
     try {
+      // Step 4: execute SQL (DELETE)
       return await Role.findByIdAndDelete(roleId);
     } catch (error) {
       logger.error('Error deleting role:', error);
@@ -67,18 +70,9 @@ class RoleRepository {
     try {
       const defaultRoles = [
         {
-          name: 'admin',
+          name: Role.ROLE_NAMES[0],
           description: 'Full system access',
-          permissions: [
-            'view_dashboard',
-            'view_sensors',
-            'control_devices',
-            'manage_users',
-            'manage_roles',
-            'manage_thresholds',
-            'view_reports',
-            'report_incidents',
-          ],
+          permissions: Role.PERMISSIONS,
         },
         {
           name: 'manager',

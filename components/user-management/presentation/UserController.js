@@ -34,11 +34,13 @@ const updateUserSchema = Joi.object({
  */
 router.post('/', async (req, res) => {
   try {
+    // Step 2: Admin submits CreateUser(name,email,role,password)
     const validation = Validator.validate(createUserSchema, req.body);
     if (!validation.isValid) {
       return ResponseHandler.badRequest(res, 'Validation failed', validation.errors);
     }
 
+    // Step 2.1: Delegate to UserService.createUser(userData)
     const user = await UserService.createUser(validation.value);
     return ResponseHandler.created(res, user, 'User created successfully');
   } catch (error) {
@@ -56,7 +58,10 @@ router.post('/', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
+    // Step 1: Admin selects "Manage Users" (UI) → controller fetches list
+    // Step 1.1: UserController -> UserService.getAllUsers()
     const users = await UserService.getAllUsers();
+    // Step 1.1.1: userList returned from service/repository chain
     return ResponseHandler.success(res, users, 'Users retrieved successfully');
   } catch (error) {
     return ResponseHandler.serverError(res, error.message);

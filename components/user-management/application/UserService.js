@@ -2,12 +2,14 @@
 const UserRepository = require('../infrastructure/UserRepository');
 const RoleRepository = require('../infrastructure/RoleRepository');
 const AuthService = require('./AuthService');
+const AuditLogService = require('./AuditLogService');
 const logger = require('../../../shared-kernel/utils/logger');
 
 class UserService {
   async createUser(userData) {
     try {
-      // Check if username or email already exists
+      // Step 2.1: UserService orchestrates the Create User use case
+      // Step 2.1.1: Validate incoming data against existing records
       const existingUser = await UserRepository.findByUsername(userData.username);
       if (existingUser) {
         throw new Error('Username already exists');
@@ -24,14 +26,21 @@ class UserService {
         throw new Error('Invalid role');
       }
 
-      // Hash password
+      // Step 2.1.1: Hash password prior to persistence
       userData.password = await AuthService.hashPassword(userData.password);
 
-      // Create user
+      // Step 2.1.1: Delegate persistence to repository
       const user = await UserRepository.create(userData);
       
       logger.info(`User created: ${user.username}`);
-      
+
+      // Step 2.1.1.1: AuditLogService.log('USER_CREATED')
+      await AuditLogService.logUserAction('USER_CREATED', {
+        userId: user._id,
+        username: user.username,
+        roleId: user.role,
+      });
+
       return user;
     } catch (error) {
       logger.error('Error creating user:', error);
@@ -83,6 +92,11 @@ class UserService {
       }
 
       logger.info(`User updated: ${user.username}`);
+      await AuditLogService.logUserAction('USER_UPDATED', {
+        userId: user._id,
+        username: user.username,
+        updates: Object.keys(updateData),
+      });
       
       return user;
     } catch (error) {
@@ -100,6 +114,10 @@ class UserService {
       }
 
       logger.info(`User deleted: ${user.username}`);
+      await AuditLogService.logUserAction('USER_DELETED', {
+        userId,
+        username: user.username,
+      });
       
       return user;
     } catch (error) {
@@ -110,7 +128,12 @@ class UserService {
 
   async deactivateUser(userId) {
     try {
-      return await this.updateUser(userId, { isActive: false });
+      const user = await this.updateUser(userId, { isActive: false });
+      await AuditLogService.logUserAction('USER_DEACTIVATED', {
+        userId,
+        username: user.username,
+      });
+      return user;
     } catch (error) {
       logger.error('Error deactivating user:', error);
       throw error;
@@ -119,7 +142,12 @@ class UserService {
 
   async activateUser(userId) {
     try {
-      return await this.updateUser(userId, { isActive: true });
+      const user = await this.updateUser(userId, { isActive: true });
+      await AuditLogService.logUserAction('USER_ACTIVATED', {
+        userId,
+        username: user.username,
+      });
+      return user;
     } catch (error) {
       logger.error('Error activating user:', error);
       throw error;

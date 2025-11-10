@@ -15,8 +15,9 @@ const API_CONFIG = {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
     
-    // Users
+    // Users & Roles
     USERS: '/api/users',
+    ROLES: '/api/roles',
     
     // Devices
     DEVICES: '/api/devices',
@@ -59,6 +60,14 @@ const API_CONFIG = {
   
   getAlertUrl(alertId) {
     return `${this.BASE_URL}/api/alerts/${alertId}`;
+  },
+
+  getUserUrl(userId) {
+    return `${this.BASE_URL}/api/users/${userId}`;
+  },
+
+  getRoleUrl(roleId) {
+    return `${this.BASE_URL}/api/roles/${roleId}`;
   }
 };
 

@@ -9,6 +9,7 @@ import ZoneManagement from './components/Management/ZoneManagement';
 import SensorManagement from './components/Management/SensorManagement';
 import ActuatorManagement from './components/Management/ActuatorManagement';
 import ThresholdManagement from './components/Management/ThresholdManagement';
+import UserManagement from './components/Management/UserManagement';
 import Logs from './components/Logs/Logs';
 import API_CONFIG from './config/api.config';
 import socketService from './services/socket.service';
@@ -100,6 +101,8 @@ function App() {
         return <ThresholdManagement onLog={addLog} />;
       case 'sensor-logs':
         return <SensorManagement onLog={addLog} />;
+      case 'users':
+        return <UserManagement onLog={addLog} />;
       default:
         return <SensorData onLog={addLog} />;
     }

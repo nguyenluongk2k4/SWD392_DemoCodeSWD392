@@ -5,6 +5,7 @@ const logger = require('../../../shared-kernel/utils/logger');
 class UserRepository {
   async create(userData) {
     try {
+      // Step 2.1.1: save(userDTO) -> INSERT user
       const user = new User(userData);
       await user.save();
       return user;
@@ -43,6 +44,7 @@ class UserRepository {
 
   async findAll(filters = {}) {
     try {
+      // Step 1.1.1.1: SELECT * FROM users (with optional filters)
       return await User.find(filters).populate('role').select('-password');
     } catch (error) {
       logger.error('Error finding all users:', error);
@@ -52,6 +54,7 @@ class UserRepository {
 
   async update(userId, updateData) {
     try {
+      // Step 2.1.1.1: UPDATE user SET ...
       return await User.findByIdAndUpdate(
         userId,
         { $set: updateData },
@@ -65,6 +68,7 @@ class UserRepository {
 
   async delete(userId) {
     try {
+      // Step 2.1.1.1: DELETE FROM users WHERE _id = ?
       return await User.findByIdAndDelete(userId);
     } catch (error) {
       logger.error('Error deleting user:', error);

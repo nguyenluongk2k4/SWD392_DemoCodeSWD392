@@ -15,6 +15,7 @@ const AlertController = require('../../components/automation-engine/presentation
 const FarmController = require('../../components/farm-management/presentation/FarmController');
 const ZoneController = require('../../components/farm-management/presentation/ZoneController');
 const SensorTypeController = require('../../components/data-ingestion/presentation/SensorTypeController');
+const RoleController = require('../../components/user-management/presentation/RoleController');
 
 class ApiGateway {
   constructor() {
@@ -103,6 +104,7 @@ class ApiGateway {
     this.app.use('/api/auth', AuthController);
     this.app.use('/api/users', UserController);
     this.app.use('/api/devices', DeviceController);
+    this.app.use('/api/roles', RoleController);
     this.app.use('/api/thresholds', ThresholdController);
     this.app.use('/api/alerts', AlertController);
     this.app.use('/api/farms', FarmController);
