@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import '../../styles/components/_management.css';
 import API_CONFIG from '../../config/api.config';
 
@@ -42,6 +42,19 @@ const ThresholdManagement = ({ onLog }) => {
       // Reset zones and actuators when no farm selected
       setZones([]);
       setActuators([]);
+      setFormData((prev) => {
+        if (!prev.zoneId && !prev.action?.actuator) {
+          return prev;
+        }
+        return {
+          ...prev,
+          zoneId: '',
+          action: {
+            ...prev.action,
+            actuator: ''
+          }
+        };
+      });
     }
   }, [selectedFarm]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -120,15 +133,28 @@ const ThresholdManagement = ({ onLog }) => {
       // Load actuators from seed data filtered by farmId
       const response = await fetch(API_CONFIG.getUrl(API_CONFIG.ENDPOINTS.DEBUG_SEED_DATA));
       const data = await response.json();
-      const filteredActuators = data.data.actuators.filter(a => 
-        (a.farmId?._id === farmId || a.farmId === farmId)
-      );
+      const allActuators = data?.data?.actuators ?? [];
+      const filteredActuators = allActuators.filter((actuator) => {
+        const farmValue = actuator.farmId?._id || actuator.farmId || actuator.farmCode;
+        return farmValue === farmId;
+      });
       setActuators(filteredActuators);
     } catch (error) {
       onLog(`Error loading actuators: ${error.message}`, 'error');
       setActuators([]);
     }
   };
+
+  const availableActuators = useMemo(() => {
+    if (!formData.zoneId) {
+      return actuators;
+    }
+
+    return actuators.filter((actuator) => {
+      const zoneValue = actuator.zoneId?._id || actuator.zoneId || actuator.zoneCode;
+      return zoneValue === formData.zoneId;
+    });
+  }, [actuators, formData.zoneId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -379,7 +405,17 @@ const ThresholdManagement = ({ onLog }) => {
 
             <select
               value={formData.zoneId}
-              onChange={(e) => setFormData({ ...formData, zoneId: e.target.value })}
+              onChange={(e) => {
+                const newZone = e.target.value;
+                setFormData((prev) => ({
+                  ...prev,
+                  zoneId: newZone,
+                  action: {
+                    ...prev.action,
+                    actuator: ''
+                  }
+                }));
+              }}
               required
               disabled={!selectedFarm}
             >
@@ -462,11 +498,11 @@ const ThresholdManagement = ({ onLog }) => {
                   ...formData, 
                   action: { ...formData.action, actuator: e.target.value } 
                 })}
-                disabled={!selectedFarm}
+                disabled={!selectedFarm || !formData.zoneId}
               >
                 <option value="">Select Actuator</option>
-                {actuators.map(actuator => (
-                  <option key={actuator._id} value={actuator._id}>
+                {availableActuators.map(actuator => (
+                  <option key={actuator._id || actuator.deviceId} value={actuator._id || actuator.deviceId}>
                     {actuator.name} ({actuator.deviceId})
                   </option>
                 ))}

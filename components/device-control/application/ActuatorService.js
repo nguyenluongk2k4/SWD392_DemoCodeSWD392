@@ -1,6 +1,8 @@
 // Device Control - Application - Actuator Service (UC03)
 const ActuatorRepository = require('../infrastructure/ActuatorRepository');
 const MqttPublishService = require('../infrastructure/MqttPublishService');
+const { getGrpcClient } = require('../infrastructure/GrpcClient');
+const config = require('../../../shared-kernel/config');
 const { eventBus, Events } = require('../../../shared-kernel/event-bus');
 const logger = require('../../../shared-kernel/utils/logger');
 
@@ -34,31 +36,61 @@ class ActuatorService {
         throw new Error('Invalid command. Use "on", "off" or "toggle"');
       }
 
+      // Resolve toggle into explicit on/off action for downstream services
+      let resolvedAction = operation.action;
+      if (operation.action === 'toggle') {
+        const currentStatus = (device.status || '').toLowerCase();
+        resolvedAction = currentStatus === 'on' ? 'off' : 'on';
+        logger.info(`Toggle requested for ${device.deviceId}. Switching from ${currentStatus || 'unknown'} to ${resolvedAction}.`);
+      }
+
       // Check if device is in automatic mode
       if (device.mode === 'auto' && operation.requestedBy === 'user') {
         logger.warn(`Device ${device.deviceId} is in automatic mode. Manual control may be overridden.`);
       }
 
-      // Send MQTT command
-      MqttPublishService.publishControlCommand(device.deviceId, operation.action);
+      // Send MQTT command when enabled
+      try {
+        MqttPublishService.publishControlCommand(device.deviceId, resolvedAction);
+      } catch (mqttError) {
+        logger.warn(`MQTT publish failed for ${device.deviceId}: ${mqttError.message}`);
+      }
+
+      // Attempt gRPC control when enabled
+      let grpcResponse = null;
+      if (config.grpc?.enabled) {
+        const addressFromTarget = typeof target === 'object' && target ? target.address : undefined;
+        const addressFromConfig = config.grpc.actuators?.[device.deviceId];
+        const grpcAddress = addressFromTarget || device.address || addressFromConfig || config.grpc.actuatorAddress;
+
+        try {
+          const grpcClient = await getGrpcClient();
+          const grpcAction = resolvedAction === 'on' ? 'TURN_ON' : 'TURN_OFF';
+          grpcResponse = await grpcClient.controlActuator(device.deviceId, grpcAction, grpcAddress);
+          logger.info(`gRPC control success for ${device.deviceId} at ${grpcAddress}: ${grpcAction}`);
+        } catch (grpcError) {
+          logger.error(`gRPC control failed for ${device.deviceId}: ${grpcError.message}`);
+        }
+      }
 
       // Update device status in database
       const updatedDevice = await ActuatorRepository.updateStatus(
         { deviceId: device.deviceId, actuatorId: device._id },
-        operation.action,
+        resolvedAction,
         operation.requestedBy
       );
 
       // Publish event
       eventBus.publish(Events.DEVICE_CONTROLLED, {
         deviceId: device.deviceId,
-        command: operation.action,
+        command: resolvedAction,
         controlledBy: operation.requestedBy,
         triggeredBy: operation.triggeredBy,
+        grpcResponse,
         timestamp: new Date(),
       });
 
-      logger.info(`✅ Device ${device.deviceId} controlled: ${operation.action} by ${operation.requestedBy}`);
+      logger.info(`✅ Device ${device.deviceId} controlled: ${resolvedAction} by ${operation.requestedBy}`);
 
       return updatedDevice;
     } catch (error) {
