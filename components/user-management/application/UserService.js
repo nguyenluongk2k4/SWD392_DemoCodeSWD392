@@ -72,6 +72,8 @@ class UserService {
 
   async updateUser(userId, updateData) {
     try {
+      logger.info('UserService.updateUser called:', { userId, updateData });
+
       // If password is being updated, hash it
       if (updateData.password) {
         updateData.password = await AuthService.hashPassword(updateData.password);
@@ -79,19 +81,41 @@ class UserService {
 
       // If role is being updated, validate it
       if (updateData.role) {
-        const role = await RoleRepository.findById(updateData.role);
+        logger.info('Validating role:', { role: updateData.role });
+        // Try to find role by ID first, then by name
+        let role = null;
+        
+        // Check if it looks like an ObjectId
+        if (/^[0-9a-fA-F]{24}$/.test(updateData.role)) {
+          role = await RoleRepository.findById(updateData.role);
+          logger.info('Role lookup by ID:', { roleId: updateData.role, found: !!role });
+        }
+        
+        // If not found by ID, try by name
         if (!role) {
+          role = await RoleRepository.findByName(updateData.role);
+          logger.info('Role lookup by name:', { roleName: updateData.role, found: !!role });
+        }
+        
+        if (!role) {
+          logger.error('Role not found:', { role: updateData.role });
           throw new Error('Invalid role');
         }
+        
+        // Ensure we use the role's _id
+        updateData.role = role._id;
+        logger.info('Role resolved to:', { roleId: role._id });
       }
 
+      logger.info('Calling repository update with:', { userId, updateData });
       const user = await UserRepository.update(userId, updateData);
       
       if (!user) {
+        logger.error('User not found in repository:', { userId });
         throw new Error('User not found');
       }
 
-      logger.info(`User updated: ${user.username}`);
+      logger.info(`User updated successfully: ${user.username}`);
       await AuditLogService.logUserAction('USER_UPDATED', {
         userId: user._id,
         username: user.username,
@@ -100,7 +124,12 @@ class UserService {
       
       return user;
     } catch (error) {
-      logger.error('Error updating user:', error);
+      logger.error('Error in UserService.updateUser:', {
+        userId,
+        updateData,
+        error: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   }

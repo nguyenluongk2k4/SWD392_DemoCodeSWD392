@@ -3,29 +3,40 @@ const express = require('express');
 const UserService = require('../application/UserService');
 const ResponseHandler = require('../../../shared-kernel/utils/response');
 const Validator = require('../../../shared-kernel/utils/validator');
+const logger = require('../../../shared-kernel/utils/logger');
 const Joi = require('joi');
 
 const router = express.Router();
 
-// Create User Schema
-const createUserSchema = Joi.object({
-  username: Joi.string().min(3).max(50).required(),
-  email: Validator.schemas.email,
-  password: Validator.schemas.password,
-  fullName: Joi.string().min(2).max(100).required(),
-  phoneNumber: Validator.schemas.phoneNumber,
-  role: Validator.schemas.mongoId.required(),
-});
+const sanitizePayload = (payload = {}) => {
+  return Object.entries(payload).reduce((acc, [key, value]) => {
+    if (value === undefined || value === null) {
+      return acc;
+    }
 
-// Update User Schema
-const updateUserSchema = Joi.object({
-  email: Validator.schemas.email.optional(),
-  password: Joi.string().min(6).optional(),
-  fullName: Joi.string().min(2).max(100).optional(),
-  phoneNumber: Validator.schemas.phoneNumber,
-  role: Validator.schemas.mongoId.optional(),
-  isActive: Joi.boolean().optional(),
-});
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      if (trimmed === '') {
+        return acc;
+      }
+      acc[key] = trimmed;
+      return acc;
+    }
+
+    acc[key] = value;
+    return acc;
+  }, {});
+};
+
+// Create User Schema
+// const createUserSchema = Joi.object({
+//   username: Joi.string().min(3).max(50).required(),
+//   email: Validator.schemas.email,
+//   password: Validator.schemas.password,
+//   fullName: Joi.string().min(2).max(100).required(),
+//   phoneNumber: Validator.schemas.phoneNumber,
+//   role: Validator.schemas.mongoId.required(),
+// });
 
 /**
  * @route   POST /api/users
@@ -34,8 +45,9 @@ const updateUserSchema = Joi.object({
  */
 router.post('/', async (req, res) => {
   try {
+    const sanitizedBody = sanitizePayload(req.body);
     // Step 2: Admin submits CreateUser(name,email,role,password)
-    const validation = Validator.validate(createUserSchema, req.body);
+    const validation = Validator.validate(createUserSchema, sanitizedBody);
     if (!validation.isValid) {
       return ResponseHandler.badRequest(res, 'Validation failed', validation.errors);
     }
@@ -92,14 +104,15 @@ router.get('/:id', async (req, res) => {
  */
 router.put('/:id', async (req, res) => {
   try {
-    const validation = Validator.validate(updateUserSchema, req.body);
-    if (!validation.isValid) {
-      return ResponseHandler.badRequest(res, 'Validation failed', validation.errors);
-    }
-
-    const user = await UserService.updateUser(req.params.id, validation.value);
+    const sanitizedBody = sanitizePayload(req.body);
+    const user = await UserService.updateUser(req.params.id, sanitizedBody);
     return ResponseHandler.success(res, user, 'User updated successfully');
   } catch (error) {
+    logger.error('Error in UserController.put:', {
+      userId: req.params.id,
+      error: error.message,
+      stack: error.stack
+    });
     if (error.message === 'User not found') {
       return ResponseHandler.notFound(res, error.message);
     }

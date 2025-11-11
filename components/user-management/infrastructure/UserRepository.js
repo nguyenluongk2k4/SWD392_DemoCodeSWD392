@@ -54,14 +54,30 @@ class UserRepository {
 
   async update(userId, updateData) {
     try {
+      logger.info('UserRepository.update called:', { userId, updateData });
+      
       // Step 2.1.1.1: UPDATE user SET ...
-      return await User.findByIdAndUpdate(
+      const user = await User.findByIdAndUpdate(
         userId,
         { $set: updateData },
         { new: true, runValidators: true }
       ).populate('role').select('-password');
+      
+      logger.info('UserRepository.update result:', { 
+        userId, 
+        found: !!user,
+        username: user?.username 
+      });
+      
+      return user;
     } catch (error) {
-      logger.error('Error updating user:', error);
+      logger.error('Error in UserRepository.update:', {
+        userId,
+        updateData,
+        error: error.message,
+        validationErrors: error.errors,
+        stack: error.stack
+      });
       throw error;
     }
   }

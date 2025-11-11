@@ -54,27 +54,9 @@ class ApiGateway {
 
     this.app.use(cors(corsOptions));
 
-    // Explicit OPTIONS handler for all routes
-    this.app.options('*', cors(corsOptions));
-
     // Body parser
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
-
-    // Additional CORS headers middleware (backup)
-    this.app.use((req, res, next) => {
-      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Max-Age', '86400');
-      
-      // Handle preflight
-      if (req.method === 'OPTIONS') {
-        return res.status(204).end();
-      }
-      next();
-    });
 
     // HTTP request logger
     this.app.use(morgan('combined', {

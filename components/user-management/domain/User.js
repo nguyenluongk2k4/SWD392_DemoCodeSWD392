@@ -29,7 +29,10 @@ const userSchema = new mongoose.Schema({
   role: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',
-    required: true,
+    required: function() {
+      // Only require role on creation, not on updates
+      return this.isNew;
+    },
   },
   isActive: {
     type: Boolean,

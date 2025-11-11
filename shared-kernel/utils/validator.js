@@ -24,7 +24,7 @@ class Validator {
   static schemas = {
     email: Joi.string().email().required(),
     password: Joi.string().min(6).required(),
-    phoneNumber: Joi.string().pattern(/^[0-9]{10,15}$/).optional(),
+  phoneNumber: Joi.string().pattern(/^\+?[0-9]{10,15}$/).optional(),
     mongoId: Joi.string().pattern(/^[0-9a-fA-F]{24}$/),
   };
 }
