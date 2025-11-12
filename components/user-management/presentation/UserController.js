@@ -29,14 +29,14 @@ const sanitizePayload = (payload = {}) => {
 };
 
 // Create User Schema
-// const createUserSchema = Joi.object({
-//   username: Joi.string().min(3).max(50).required(),
-//   email: Validator.schemas.email,
-//   password: Validator.schemas.password,
-//   fullName: Joi.string().min(2).max(100).required(),
-//   phoneNumber: Validator.schemas.phoneNumber,
-//   role: Validator.schemas.mongoId.required(),
-// });
+const createUserSchema = Joi.object({
+  username: Joi.string().min(3).max(50).required(),
+  email: Validator.schemas.email,
+  password: Validator.schemas.password,
+  fullName: Joi.string().min(2).max(100).required(),
+  phoneNumber: Validator.schemas.phoneNumber,
+  role: Validator.schemas.mongoId.required(),
+});
 
 /**
  * @route   POST /api/users
