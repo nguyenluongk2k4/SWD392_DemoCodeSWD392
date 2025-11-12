@@ -60,6 +60,13 @@ const config = {
     enableSMS: process.env.ENABLE_SMS_ALERTS === 'true',
     enablePush: process.env.ENABLE_PUSH_NOTIFICATIONS === 'true',
   },
+
+  automation: {
+    workerEnabled: process.env.AUTOMATION_WORKER_ENABLED !== 'false',
+    workerIntervalMs: parseInt(process.env.AUTOMATION_WORKER_INTERVAL_MS, 10) || 30000,
+    maxAttempts: parseInt(process.env.AUTOMATION_WORKER_MAX_ATTEMPTS, 10) || 3,
+    retryDelayMs: parseInt(process.env.AUTOMATION_WORKER_RETRY_MS, 10) || 60000,
+  },
   
   logging: {
     level: process.env.LOG_LEVEL || 'info',

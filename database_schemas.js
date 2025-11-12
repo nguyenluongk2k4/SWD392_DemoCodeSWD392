@@ -614,7 +614,7 @@ const alertSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: ['new', 'acknowledged', 'resolved', 'dismissed'],
+    enum: ['new', 'notified', 'notification_failed', 'action_executed', 'action_failed', 'acknowledged', 'resolved', 'dismissed'],
     default: 'new',
     index: true
   },
@@ -636,6 +636,25 @@ const alertSchema = new mongoose.Schema({
     actuatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Actuator' },
     deviceType: String,
     action: String
+  },
+  automation: {
+    correlationId: {
+      type: String,
+      index: true
+    },
+    taskIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AutomationTask'
+      }
+    ],
+    requestedAction: String,
+    lastTaskStatus: {
+      type: String,
+      enum: ['pending', 'processing', 'success', 'failed']
+    },
+    lastExecutedAt: Date,
+    lastError: String
   },
   farmId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -661,7 +680,9 @@ const alertSchema = new mongoose.Schema({
       default: 'pending'
     },
     sentAt: Date,
-    error: String
+    error: String,
+    messageId: String,
+    metadata: mongoose.Schema.Types.Mixed
   }],
   acknowledgedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -673,11 +694,89 @@ const alertSchema = new mongoose.Schema({
     ref: 'User'
   },
   resolvedAt: Date,
-  resolutionNotes: String
+  resolutionNotes: String,
+  history: {
+    type: [
+      {
+        event: {
+          type: String,
+          required: true
+        },
+        status: String,
+        channel: String,
+        recipient: String,
+        detail: String,
+        createdAt: {
+          type: Date,
+          default: Date.now
+        }
+      }
+    ],
+    default: []
+  }
 }, {
   timestamps: true
 });
 
+// Automation Task Schema - queue for deferred actuator execution
+const automationTaskSchema = new mongoose.Schema({
+  alert: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Alert',
+    required: false
+  },
+  threshold: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Threshold',
+    required: false
+  },
+  actuator: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Actuator',
+    required: false
+  },
+  correlationId: {
+    type: String,
+    index: true
+  },
+  deviceId: {
+    type: String,
+    required: false,
+    index: true
+  },
+  action: {
+    type: String,
+    enum: ['on', 'off', 'toggle'],
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'processing', 'success', 'failed'],
+    default: 'pending',
+    index: true
+  },
+  attempts: {
+    type: Number,
+    default: 0
+  },
+  lastAttemptAt: Date,
+  error: String,
+  result: mongoose.Schema.Types.Mixed,
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  scheduledAt: {
+    type: Date,
+    default: Date.now,
+    index: true
+  }
+}, {
+  timestamps: true
+});
+
+automationTaskSchema.index({ status: 1, scheduledAt: 1 });
+automationTaskSchema.index({ correlationId: 1 });
 // Indexes for Alert collection
 alertSchema.index({ type: 1, status: 1, createdAt: -1 });
 alertSchema.index({ severity: 1, status: 1 });
@@ -693,6 +792,13 @@ alertSchema.methods.acknowledge = function(userId) {
   this.status = 'acknowledged';
   this.acknowledgedBy = userId;
   this.acknowledgedAt = new Date();
+  this.history = this.history || [];
+  this.history.push({
+    event: 'acknowledged',
+    status: this.status,
+    detail: userId ? `Acknowledged by ${userId.toString()}` : 'Acknowledged',
+    createdAt: new Date()
+  });
   return this.save();
 };
 
@@ -703,11 +809,24 @@ alertSchema.methods.resolve = function(userId, notes) {
   if (notes) {
     this.message = `${this.message}\nResolution: ${notes}`;
   }
+  this.history = this.history || [];
+  this.history.push({
+    event: 'resolved',
+    status: this.status,
+    detail: notes ? notes.toString() : 'Resolved',
+    createdAt: new Date()
+  });
   return this.save();
 };
 
 alertSchema.methods.dismiss = function() {
   this.status = 'dismissed';
+  this.history = this.history || [];
+  this.history.push({
+    event: 'dismissed',
+    status: this.status,
+    createdAt: new Date()
+  });
   return this.save();
 };
 
@@ -724,6 +843,7 @@ module.exports = {
   Actuator: getModel('Actuator', actuatorSchema),
   Threshold: getModel('Threshold', thresholdSchema),
   Alert: getModel('Alert', alertSchema),
+  AutomationTask: getModel('AutomationTask', automationTaskSchema),
 
   // Raw schemas for reference
   schemas: {
@@ -737,6 +857,7 @@ module.exports = {
     sensorDataSchema,
     actuatorSchema,
     thresholdSchema,
-    alertSchema
+    alertSchema,
+    automationTaskSchema
   }
 };

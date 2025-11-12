@@ -18,6 +18,7 @@ const { getGrpcClient } = require('../components/device-control/infrastructure/G
 const DataCollectorService = require('../components/data-ingestion/application/DataCollectorService');
 const AutomationService = require('../components/automation-engine/application/AutomationService');
 const NotificationService = require('../components/automation-engine/application/NotificationService');
+const AutomationWorker = require('../components/automation-engine/application/AutomationWorker');
 
 class Application {
   constructor() {
@@ -40,6 +41,9 @@ class Application {
 
       // 3.5. Initialize gRPC Client
       await this.initializeGrpc();
+
+  // 3.6. Start automation worker loop
+  this.startAutomationWorker();
 
       // 4. Start HTTP Server with API Gateway
       await this.startHttpServer();
@@ -151,6 +155,7 @@ class Application {
         logger.info('MQTT disconnected');
 
         // Disconnect Database
+  this.stopAutomationWorker();
         await database.disconnect();
         logger.info('Database disconnected');
 
@@ -174,6 +179,27 @@ class Application {
       shutdown('UNCAUGHT_EXCEPTION');
     });
   }
+
+    startAutomationWorker() {
+      if (!config.database.enabled) {
+        logger.info('⚙️  Skipping automation worker (Database disabled)');
+        return;
+      }
+
+      try {
+        AutomationWorker.start();
+      } catch (error) {
+        logger.warn('⚠️ Unable to start automation worker: ' + error.message);
+      }
+    }
+
+    stopAutomationWorker() {
+      try {
+        AutomationWorker.stop();
+      } catch (error) {
+        logger.warn('⚠️ Unable to stop automation worker: ' + error.message);
+      }
+    }
 }
 
 // Start Application

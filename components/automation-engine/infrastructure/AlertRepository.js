@@ -99,7 +99,7 @@ class AlertRepository {
   async findActive() {
     try {
       return await Alert.find({
-        status: { $in: ['new', 'acknowledged'] }
+        status: { $in: ['new', 'notified', 'notification_failed', 'action_executed', 'action_failed', 'acknowledged'] }
       })
         .populate(ALERT_POPULATE)
         .sort({ severity: -1, createdAt: -1 })
@@ -126,6 +126,50 @@ class AlertRepository {
       return alert;
     } catch (error) {
       logger.error('Error updating alert:', error);
+      throw error;
+    }
+  }
+
+  async appendHistory(alertId, historyEntry = {}, options = {}) {
+    try {
+      const updateOps = {
+        $push: { history: historyEntry },
+        $set: {}
+      };
+
+      if (options.status) {
+        updateOps.$set.status = options.status;
+      }
+
+      if (options.additionalFields) {
+        updateOps.$set = {
+          ...updateOps.$set,
+          ...options.additionalFields
+        };
+      }
+
+      if (options.addToSet) {
+        updateOps.$addToSet = options.addToSet;
+      }
+
+      if (Object.keys(updateOps.$set).length === 0) {
+        delete updateOps.$set;
+      }
+
+      const alert = await Alert.findByIdAndUpdate(
+        alertId,
+        updateOps,
+        { new: true }
+      ).populate(ALERT_POPULATE);
+
+      if (!alert) {
+        throw new Error('Alert not found');
+      }
+
+      logger.info(`Alert history updated: ${alert._id}`);
+      return alert;
+    } catch (error) {
+      logger.error('Error appending alert history:', error);
       throw error;
     }
   }

@@ -2,7 +2,7 @@
 // Core logic for automatic irrigation/ventilation
 const mongoose = require('mongoose');
 const ThresholdService = require('./ThresholdService');
-const ActuatorService = require('../../device-control/application/ActuatorService');
+const AutomationTaskService = require('./AutomationTaskService');
 const logger = require('../../../shared-kernel/utils/logger');
 const { eventBus, Events } = require('../../../shared-kernel/event-bus');
 
@@ -97,17 +97,30 @@ class AutomationService {
 
       logger.info(`Executing threshold action: ${action.type}`);
       const { sensorData } = sensorEvent;
+      const correlationId = new mongoose.Types.ObjectId().toString();
+      const actuatorRef = action.actuator;
+      const actuatorId = actuatorRef && actuatorRef._id
+        ? actuatorRef._id
+        : (mongoose.isValidObjectId(actuatorRef) ? actuatorRef : undefined);
+      const deviceId = action.deviceId || (actuatorRef && actuatorRef.deviceId) || undefined;
+      const automationContext = {
+        correlationId,
+        deviceAction: action.deviceAction,
+        actuatorId,
+        deviceId,
+        violationType
+      };
       
       // Control device
       if (action.type === 'device' || action.type === 'both') {
         if ((action.actuator || action.deviceId) && action.deviceAction) {
-          await this.controlDevice(action.actuator, action.deviceId, action.deviceAction, threshold, sensorData);
+          await this.controlDevice(action.actuator, action.deviceId, action.deviceAction, threshold, sensorData, automationContext);
         }
       }
       
       // Send alert
       if (action.type === 'alert' || action.type === 'both') {
-        await this.createAlert(threshold, sensorEvent, violationType);
+        await this.createAlert(threshold, sensorEvent, violationType, automationContext);
       }
       
     } catch (error) {
@@ -119,33 +132,45 @@ class AutomationService {
   /**
    * Control device based on threshold action
    */
-  async controlDevice(actuatorRef, deviceIdFallback, deviceAction, threshold, sensorData) {
+  async controlDevice(actuatorRef, deviceIdFallback, deviceAction, threshold, sensorData, automationContext = {}) {
     try {
-      const actuatorId = actuatorRef && actuatorRef._id
+      const actuatorId = automationContext.actuatorId || (actuatorRef && actuatorRef._id
         ? actuatorRef._id
-        : (mongoose.isValidObjectId(actuatorRef) ? actuatorRef : undefined);
-      const deviceId = deviceIdFallback || (actuatorRef && actuatorRef.deviceId) || undefined;
+        : (mongoose.isValidObjectId(actuatorRef) ? actuatorRef : undefined));
+      const deviceId = automationContext.deviceId || deviceIdFallback || (actuatorRef && actuatorRef.deviceId) || undefined;
 
       if (!deviceId && !actuatorId) {
         logger.warn('No actuator reference provided for control action');
         return;
       }
 
-      logger.info(`Auto-controlling device: ${deviceId || actuatorId} → ${deviceAction}`);
+      logger.info(`Queueing automation task for device ${deviceId || actuatorId} → ${deviceAction}`);
 
-      await ActuatorService.controlDevice({
+      const triggeredBy = {
+        type: 'threshold',
+        thresholdId: threshold._id,
+        sensorDataId: sensorData?._id,
+        violationType: automationContext.violationType
+      };
+
+      await AutomationTaskService.enqueueDeviceAction({
+        actuator: actuatorId,
         deviceId,
-        actuatorId,
         action: deviceAction,
-        mode: 'auto',
-        triggeredBy: {
-          type: 'threshold',
-          thresholdId: threshold._id,
-          sensorData
-        }
+        threshold: threshold._id,
+        correlationId: automationContext.correlationId,
+        metadata: {
+          violationType: automationContext.violationType,
+          sensorDataId: sensorData?._id,
+          sensorValue: sensorData?.value,
+          sensorTimestamp: sensorData?.timestamp,
+          thresholdName: threshold.name,
+          address: actuatorRef && actuatorRef.address ? actuatorRef.address : undefined
+        },
+        triggeredBy
       });
-      
-  logger.info(`✅ Device ${deviceId || actuatorId} controlled successfully`);
+
+      logger.info(`✅ Automation task queued for device ${deviceId || actuatorId}`);
       
     } catch (error) {
       logger.error('Error controlling device:', error);
@@ -156,7 +181,7 @@ class AutomationService {
   /**
    * Create alert when threshold is exceeded
    */
-  async createAlert(threshold, sensorEvent, violationType) {
+  async createAlert(threshold, sensorEvent, violationType, automationContext = {}) {
     try {
       const severity = this.calculateSeverity(threshold, sensorEvent.value, violationType);
 
@@ -183,9 +208,24 @@ class AutomationService {
         farmId: farm?._id,
         zoneId: zone?._id
       };
+
+      if (automationContext.actuatorId || automationContext.deviceId) {
+        alertData.device = {
+          actuatorId: automationContext.actuatorId,
+          action: automationContext.deviceAction
+        };
+      }
+
+      if (automationContext.correlationId) {
+        alertData.automation = {
+          correlationId: automationContext.correlationId,
+          requestedAction: automationContext.deviceAction,
+          lastTaskStatus: 'pending'
+        };
+      }
       
       // This will be handled by NotificationService
-      eventBus.emit(Events.ALERT_CREATED, alertData);
+      eventBus.emit(Events.ALERT_CREATE_REQUEST, alertData);
       
       logger.info(`Alert created for threshold: ${threshold.name}`);
       

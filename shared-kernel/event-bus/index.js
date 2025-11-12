@@ -45,8 +45,10 @@ const Events = {
   DEVICE_STATUS_CHANGED: 'device.status.changed',
   
   // Alerts
+  ALERT_CREATE_REQUEST: 'alert.create.request',
   ALERT_CREATED: 'alert.created',
   ALERT_NOTIFIED: 'alert.notified',
+  ALERT_UPDATED: 'alert.updated',
   ALERT_ACKNOWLEDGED: 'alert.acknowledged',
   ALERT_RESOLVED: 'alert.resolved',
   
@@ -56,6 +58,11 @@ const Events = {
   
   // Incidents
   INCIDENT_REPORTED: 'incident.reported',
+
+  // Automation Tasks
+  AUTOMATION_TASK_CREATED: 'automation.task.created',
+  AUTOMATION_TASK_COMPLETED: 'automation.task.completed',
+  AUTOMATION_TASK_FAILED: 'automation.task.failed',
 };
 
 const eventBus = new EventBus();
