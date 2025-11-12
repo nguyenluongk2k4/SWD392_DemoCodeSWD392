@@ -11,6 +11,7 @@ import ActuatorManagement from './components/Management/ActuatorManagement';
 import ThresholdManagement from './components/Management/ThresholdManagement';
 import UserManagement from './components/Management/UserManagement';
 import Logs from './components/Logs/Logs';
+import AlertCenter from './components/Alerts/AlertCenter';
 import API_CONFIG from './config/api.config';
 import socketService from './services/socket.service';
 
@@ -66,13 +67,27 @@ function App() {
       setLastUpdate(message.timestamp);
     };
 
+    const handleAlertCreated = (message) => {
+      const alertTitle = message?.data?.alert?.title || message?.alert?.title || 'Alert';
+      addLog(`Alert created: ${alertTitle}`, 'warning');
+    };
+
+    const handleAlertUpdated = (message) => {
+      const alertTitle = message?.data?.alert?.title || message?.alert?.title || 'Alert';
+      addLog(`Alert updated: ${alertTitle}`, 'info');
+    };
+
   socketService.getSocket();
   socketService.on('sensor:data', handleSensorData);
   socketService.on('sensor:data:processed', handleSensorProcessed);
+  socketService.on('alert:created', handleAlertCreated);
+  socketService.on('alert:updated', handleAlertUpdated);
 
     return () => {
       socketService.off('sensor:data', handleSensorData);
       socketService.off('sensor:data:processed', handleSensorProcessed);
+      socketService.off('alert:created', handleAlertCreated);
+      socketService.off('alert:updated', handleAlertUpdated);
     };
   }, [addLog]);
 
@@ -99,6 +114,8 @@ function App() {
         return <ActuatorManagement onLog={addLog} />;
       case 'thresholds':
         return <ThresholdManagement onLog={addLog} />;
+      case 'alerts':
+        return <AlertCenter onLog={addLog} />;
       case 'sensor-logs':
         return <SensorManagement onLog={addLog} />;
       case 'users':

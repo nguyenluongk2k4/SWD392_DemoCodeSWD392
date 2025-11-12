@@ -125,7 +125,7 @@ class AutomationWorker {
       createdAt: new Date()
     };
 
-    await AlertRepository.appendHistory(
+    const updatedAlert = await AlertRepository.appendHistory(
       task.alert,
       historyEntry,
       {
@@ -141,6 +141,10 @@ class AutomationWorker {
         }
       }
     );
+
+    if (updatedAlert) {
+      eventBus.publish(Events.ALERT_UPDATED, { alert: updatedAlert });
+    }
   }
 
   async handleTaskFailure(task, error) {
@@ -164,7 +168,7 @@ class AutomationWorker {
       createdAt: new Date()
     };
 
-    await AlertRepository.appendHistory(
+    const updatedAlert = await AlertRepository.appendHistory(
       task.alert,
       historyEntry,
       {
@@ -180,6 +184,10 @@ class AutomationWorker {
         }
       }
     );
+
+    if (updatedAlert) {
+      eventBus.publish(Events.ALERT_UPDATED, { alert: updatedAlert });
+    }
   }
 }
 

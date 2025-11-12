@@ -12,6 +12,7 @@ const Layout = ({ children, currentPage, onPageChange }) => {
     { id: 'actuators', label: 'Quản Lí Actuators', icon: 'fas fa-sliders-h' },
     { id: 'users', label: 'Quản Lí Người Dùng', icon: 'fas fa-users-cog' },
     { id: 'thresholds', label: 'Quản Lí Ngưỡng', icon: 'fas fa-signal' },
+    { id: 'alerts', label: 'Trung Tâm Alerts', icon: 'fas fa-bell' },
     { id: 'sensor-logs', label: 'Sensor Logs', icon: 'fas fa-history' }
   ];
 

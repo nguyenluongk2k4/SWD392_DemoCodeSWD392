@@ -47,6 +47,22 @@ class WebSocketGateway {
     eventBus.subscribe(Events.ALERT_CREATED, (data) => {
       this.broadcast('alert:created', data);
     });
+
+    eventBus.subscribe(Events.ALERT_NOTIFIED, (data) => {
+      this.broadcast('alert:notified', data);
+    });
+
+    eventBus.subscribe(Events.ALERT_UPDATED, (data) => {
+      this.broadcast('alert:updated', data);
+    });
+
+    eventBus.subscribe(Events.ALERT_ACKNOWLEDGED, (data) => {
+      this.broadcast('alert:acknowledged', data);
+    });
+
+    eventBus.subscribe(Events.ALERT_RESOLVED, (data) => {
+      this.broadcast('alert:resolved', data);
+    });
   }
 
   setupSocketHandlers() {

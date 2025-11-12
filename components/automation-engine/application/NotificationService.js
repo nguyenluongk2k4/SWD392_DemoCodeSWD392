@@ -77,52 +77,61 @@ class NotificationService {
       
       // Determine notification channels and recipients
       const { channels, recipients } = await this.getNotificationSettings(alert);
-      
+
+      let notifications = [];
+      let attempts = [];
+      let notificationProcessed = false;
+
       if (channels.length === 0 || recipients.length === 0) {
         logger.info('No notification channels or recipients configured');
-        alert.history = [...(alert.history || []), ...historyEntries];
-        await alert.save();
-        return alert;
-      }
-      
-      // Send notifications
-      const { notifications = [], attempts = [] } = await this.sendNotifications(
-        channels,
-        recipients,
-        alert
-      );
-      
-      // Update alert with notification status
-      alert.notifications = notifications;
-      historyEntries.push(...attempts);
-
-      const hasAttempt = attempts.length > 0 || notifications.length > 0;
-      if (hasAttempt) {
-        const hasSuccess = notifications.some((item) => item.status === 'sent') ||
-          attempts.some((item) => item.status === 'sent');
-        alert.status = hasSuccess ? 'notified' : 'notification_failed';
         historyEntries.push({
-          event: 'notification_summary',
+          event: 'notification_skipped',
           status: alert.status,
-          detail: hasSuccess ? 'At least one channel succeeded' : 'All channels failed',
+          detail: 'Notification skipped - no channels or recipients',
           createdAt: new Date()
         });
+      } else {
+        notificationProcessed = true;
+        ({ notifications = [], attempts = [] } = await this.sendNotifications(
+          channels,
+          recipients,
+          alert
+        ));
+
+        // Update alert with notification status
+        historyEntries.push(...attempts);
+
+        const hasAttempt = attempts.length > 0 || notifications.length > 0;
+        if (hasAttempt) {
+          const hasSuccess = notifications.some((item) => item.status === 'sent') ||
+            attempts.some((item) => item.status === 'sent');
+          alert.status = hasSuccess ? 'notified' : 'notification_failed';
+          historyEntries.push({
+            event: 'notification_summary',
+            status: alert.status,
+            detail: hasSuccess ? 'At least one channel succeeded' : 'All channels failed',
+            createdAt: new Date()
+          });
+        }
       }
 
+      alert.notifications = notifications;
       alert.history = [...(alert.history || []), ...historyEntries];
       await alert.save();
 
       eventBus.emit(Events.ALERT_CREATED, { alert });
+      eventBus.emit(Events.ALERT_UPDATED, { alert });
+
+      if (notificationProcessed) {
+        eventBus.emit(Events.ALERT_NOTIFIED, {
+          alert,
+          notifications
+        });
+      }
       
-      // Emit WebSocket event for real-time updates
-      eventBus.emit(Events.ALERT_NOTIFIED, {
-        alert,
-        notifications
-      });
+      logger.info(`✅ Alert notifications processed: ${alert._id}`);
       
-      logger.info(`✅ Alert notifications sent: ${alert._id}`);
-      
-    return alert;
+      return alert;
       
     } catch (error) {
       logger.error('Error handling new alert:', error);
@@ -297,13 +306,14 @@ class NotificationService {
         throw new Error('Alert not found');
       }
       
-      await alert.acknowledge(userId);
+  const updatedAlert = await alert.acknowledge(userId);
       
-      eventBus.emit(Events.ALERT_ACKNOWLEDGED, { alert, userId });
+  eventBus.emit(Events.ALERT_ACKNOWLEDGED, { alert: updatedAlert, userId });
+  eventBus.emit(Events.ALERT_UPDATED, { alert: updatedAlert });
       
-      logger.info(`Alert acknowledged: ${alertId} by user ${userId}`);
+  logger.info(`Alert acknowledged: ${alertId} by user ${userId}`);
       
-      return alert;
+  return updatedAlert;
     } catch (error) {
       logger.error('Error acknowledging alert:', error);
       throw error;
@@ -321,13 +331,14 @@ class NotificationService {
         throw new Error('Alert not found');
       }
       
-      await alert.resolve(userId, notes);
+  const updatedAlert = await alert.resolve(userId, notes);
       
-      eventBus.emit(Events.ALERT_RESOLVED, { alert, userId });
+  eventBus.emit(Events.ALERT_RESOLVED, { alert: updatedAlert, userId });
+  eventBus.emit(Events.ALERT_UPDATED, { alert: updatedAlert });
       
-      logger.info(`Alert resolved: ${alertId} by user ${userId}`);
+  logger.info(`Alert resolved: ${alertId} by user ${userId}`);
       
-      return alert;
+  return updatedAlert;
     } catch (error) {
       logger.error('Error resolving alert:', error);
       throw error;
